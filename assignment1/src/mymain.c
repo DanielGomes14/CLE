@@ -111,7 +111,7 @@ void read_file(char *filename)
             vowels_counter++;
         }
         if(!isDelimiterChar(current) && !isVowel(current) && !isConsonant(current)){
-            printf("\delimiter not found %d",current);
+            printf("\ndelimiter not found %d",current);
         }
         
         if(last == WEOF && current == EOF) break;
