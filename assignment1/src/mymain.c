@@ -4,6 +4,10 @@
 #include <ctype.h>
 #include <wchar.h>
 #include <locale.h>
+#include <pthread.h>
+
+#include <unistd.h>
+#include <limits.h>
 
 /*
  Check if character is a vowel
@@ -121,11 +125,61 @@ void read_file(char *filename)
     printStats(vowels_counter,consonant_counter,total_words);
 }
 
+void* read_file_thread(void* vargp){
+    char* filename = (char*)vargp;
+    printf("<%s>\n", filename);
+    FILE* ptr = fopen(filename, "r");
+    if(!ptr){
+        printf("Error opening file.\nExiting...\n");
+        return NULL;
+    }
+
+    wint_t last, current;
+    int vowels_counter = 0, consonant_counter = 0, total_words = 0;
+
+    while (1)
+    {
+        current = fgetwc(ptr);
+        //printf("\ncurrent %lc, last %lc", current,last);
+       
+        if (isDelimiterChar(current) && isConsonant(last) ){
+            //printf("\n consonant");
+            consonant_counter++;
+        }
+        
+        if(isDelimiterChar(current) && !isDelimiterChar(last)){
+            total_words++;
+        }
+        if(isDelimiterChar(last) && isVowel(current) ){
+            //printf("\n vowel");
+            vowels_counter++;
+        }
+        if(!isDelimiterChar(current) && !isVowel(current) && !isConsonant(current)){
+            printf("\ndelimiter not found %d",current);
+        }
+        
+        if(last == WEOF && current == EOF) break;
+        last = current;
+    }
+    
+    printStats(vowels_counter,consonant_counter,total_words);
+    
+}
+
 int main(int argc, char *argv[])
 {
     setlocale(LC_ALL, ""); 
 
+    char cwd[PATH_MAX];
+   if (getcwd(cwd, sizeof(cwd)) != NULL) {
+       printf("Current working dir: %s\n", cwd);
+   } else {
+       perror("getcwd() error");
+       return 1;
+   }
+
     int counter;
+    pthread_t tid[argc - 1];
 
     if (argc == 1)
     {
@@ -134,6 +188,12 @@ int main(int argc, char *argv[])
 
     for (counter = 1; counter < argc; counter++)
     {
-        read_file(argv[counter]);
+        // read_file(argv[counter]);
+        pthread_create(&tid[counter - 1], NULL, read_file_thread, (void*)argv[counter]);
     }
+
+    for(counter = 1; counter < argc; counter++){
+        pthread_join(tid[counter-1], NULL);
+    }
+
 }
