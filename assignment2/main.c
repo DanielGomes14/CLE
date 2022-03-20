@@ -5,67 +5,53 @@
 
 #define PATH = "/datasets/"
 
-int gaussian_elimination(int order, double matrix[order][order]){
-    // applies gaussian elimination to the given matrix
 
-    int swap_count = 0;
+double determinant( int order, double matrix[order][order]) {
+   
+    double det = 1;
 
-    // for(int i = 0; i < order; i++){
-    //     for(int j = 0; j < order; j++){
-    //         printf("%f\t", matrix[i][j]);
-    //     }
-    //     printf("\n");
-    // }
-    // getchar();
+    for (int i = 0; i < order; ++i) {
 
-    // upper triangular transformation
-    for(int i = 0; i < order; i++){
-        for(int j = i + 1; j < order; j++){
-            if(fabs(matrix[i][i]) < fabs(matrix[j][i])){
-                swap_count++;
-                for(int k = 0; k < order; k++){
-                    double temp;
-                    temp = matrix[i][k];
-                    matrix[i][k] = matrix[j][k];
-                    matrix[j][k] = temp;
-                }
+        double pivotElement = matrix[i][i];
+        int pivotRow = i;
+        // partial pivoting, which should select
+        // the entry with largest absolute value from the column of the matrix
+        // that is currently being considered as the pivot element
+        for (int row = i + 1; row < order; ++row) {
+            if (fabs(matrix[row][i]) > fabs(pivotElement)) {
+                // update the value of the pivot and pivot row index
+                pivotElement = matrix[row][i];
+                pivotRow = row;
             }
         }
-
-        // gauss elimination
-        for(int j = 0; j < order; j++){
-            double term = matrix[j][i] / matrix[i][i];
-            if(matrix[i][i] == 0)
-            printf("ZEROOOOOOOOOOOOOOOOOOOOOOOOO\n");
-            for(int k = 0; k < order; k++){
-                matrix[j][k] = matrix[j][k] - (term * matrix[i][k]);
+        //if the diagonal element is zero then the determinant will be zeero
+        if (pivotElement == 0.0) {
+            return 0.0;
+        }
+        //if the pivotELement is not in the current row, then we perform a swap in the columns
+        if (pivotRow != i) {
+            for (int k = 0; k < order; k++){
+                double temp;
+                temp = matrix[i][k];
+                matrix[i][k] = matrix[pivotRow][k];
+                matrix[pivotRow][k] = temp;
+            }
+            //signal the row swapping
+            det *= -1.0;
+        }
+        //update the determinant with the the diagonal value of the current row
+        det *= pivotElement;
+        // reduce the matrix to a  Upper Triangle Matrix
+        for (int row = i + 1; row < order; ++row) {
+            for (int col = i + 1; col < order; ++col) {
+                matrix[row][col] -= matrix[row][i] * matrix[i][col] / pivotElement;
             }
         }
-
-        // for(int i = 0; i < order; i++){
-        //     for(int j = 0; j < order; j++){
-        //         printf("%f\t", matrix[i][j]);
-        //     }
-        //     printf("\n");
-        // }
-        // getchar();
-
     }
 
-    return swap_count;
+    return det;
 }
 
-int determinant(int order, double matrix[order][order]){
-    // calculates determinant of triangular matrix
-
-    double det = 1;
-    int swap_count = gaussian_elimination(order, matrix);
-
-    for(int i = 0; i < order; i++)
-        det = det * matrix[i][i];
-
-    return det * pow(-1, swap_count);
-}
 
 int main(int argc, char* argv[]) {
 
@@ -101,7 +87,7 @@ int main(int argc, char* argv[]) {
         printf("Amount of matrixes: <%d>\tOrder of matrixes: <%d>\n", amount, order);
         while(fread(&matrix, sizeof(matrix), 1, file)){  // reads matrix from .bin file
             // calculates determinant, gaussian elimination is applied inside
-            printf("\tMatrix nº: <%d>\tDeterminant: <%d>\n", j + 1, determinant(order, matrix));
+            printf("\tMatrix nº: <%d>\tDeterminant: <%f>\n", j + 1, determinant(order, matrix));
             j++;
         }
         printf("\n\n");
