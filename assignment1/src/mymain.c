@@ -56,11 +56,11 @@ int isDelimiterChar(wint_t ch)
 {
     
     wint_t arr[] = {0x20, 0x09, 0x0A, 0x0D, 0x2D, 0x22, 0x5B, 0x5D, 0x28, 0x29,
-                  0x2E, 0x2C, 0x3B,0x3B, 0x21, 0x3F,0xAB,0xBB,0x3A,0xE2809C, 0xE2809D, 0xE28093,
-                   0xE280A6, 0x27, WEOF};
+                  0x2E, 0x2C, 0x3B,0x3B, 0x21, 0x3F,0xAB,0xBB,0x3A,8230,8211,8212, 8220,8221};
         
-    for (int i = 0; i < 25; i++)
+    for (int i = 0; i < 24; i++)
     {
+        
         if (arr[i] == ch)
             return 1;
     }
@@ -81,7 +81,10 @@ int isConsonant(wint_t ch){
     return 0;
 }
 
-
+int isApostrophe(wint_t ch){
+    if (ch == 0x27 || ch == 0x60 || ch == 8216|| ch == 8217) return 1;
+    return 0;
+}
 
 void printStats(int vowels_counter, int consonant_counter, int total_words)
 {
@@ -155,42 +158,46 @@ void* read_file_thread(void* vargp){
     wint_t last, current;
     int vowels_counter = 0, consonant_counter = 0, total_words = 0;
     int in_word = 0;
-
+    int lastCharConsonant = 0;
     while (1)
     {
         current = fgetwc(ptr);
-        printf("\ncurrent %lc, last %lc", current,last);
+        // printf("\ncurrent %lc", current);
         
-        if(current == '\'' && !in_word){
-            last = current;
+        if(current == WEOF){
+            break;
+        }
+        // if(!isDelimiterChar(current) && !isVowel(current) && !isConsonant(current) && !isApostrophe(current)){
+        //     printf("\n NOT FOUND %d, %d", current, isDelimiterChar(current));
+        // }
+        if(! in_word){
+            if(isDelimiterChar(current) || isApostrophe(current)){
+                continue;
+            }
             in_word = 1;
-            continue;
+            total_words++;
+            // printf("\nnew word");
+            if(isVowel(current)){
+                vowels_counter++;
+                // printf("\nvowel");
+            }
+            lastCharConsonant = isConsonant(current);
         }
 
-        if(current == '\'' && in_word){
-            last = current;
-            in_word = 0;
+        if(in_word) {
+            if(isVowel(current) || isConsonant(current)){
+                lastCharConsonant = isConsonant(current);
+                continue;
+            }
+            else if ( isDelimiterChar(current)){
+                in_word = 0;
+                if (lastCharConsonant){
+                    //printf("\nconsonant %lc", current);
+                    consonant_counter++;
+                }
+            }
+
         }
-        if (isDelimiterChar(current) && isConsonant(last) && !in_word){
-            printf("\n consonant");
-            in_word = 0;
-            consonant_counter++;
-        }
-        
-        if(isDelimiterChar(current) && !isDelimiterChar(last) && !in_word){
-            printf("\n new word");
-            total_words++;
-        }
-        if(isDelimiterChar(last) && isVowel(current) ){
-            printf("\n vowel");
-            vowels_counter++;
-        }
-        if(!isDelimiterChar(current) && !isVowel(current) && !isConsonant(current)){
-            printf("\ndelimiter not found %d",current);
-        }
-        
-        if(last == WEOF && current == EOF) break;
-        last = current;
     }
     
     printStats(vowels_counter,consonant_counter,total_words);
