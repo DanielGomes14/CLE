@@ -108,7 +108,7 @@ int main(int argc, char *argv[])
         while (fread(&matrix, sizeof(matrix), 1, file))
         { // reads matrix from .bin file
             // calculates determinant, gaussian elimination is applied inside
-            printf("\tMatrix nº: <%d>\tDeterminant: <%.3f>\n", j + 1, determinant(order, matrix));
+            printf("\t..Matrix nº: <%d>\tDeterminant: <%.3f>\n", j + 1, determinant(order, matrix));
             j++;
            
         }
