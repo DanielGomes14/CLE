@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
+#include <time.h>
 
 #define PATH = "/datasets/"
 
@@ -57,14 +58,7 @@ double determinant(int order, double matrix[order][order])
             }
         }
     }
-    // for (int i = 0; i < order; i++)
-    // {
-    //     for (int j = 0; j < order; j++)
-    //     {
-    //         printf("%f\t", matrix[i][j]);
-    //     }
-    //     printf("\n");
-    //}
+    
     return det;
 }
 
@@ -93,26 +87,38 @@ int main(int argc, char *argv[])
 
         //  reads amount of matrices to read
         int amount = 0;
-        fread(&amount, sizeof(int), 1, file);
+        if(!fread(&amount, sizeof(int), 1, file)){
+            printf("Error reading amount. Exiting...");
+            exit(-1);
+        }
 
         // reads order os matrices
         int order = 0;
-        fread(&order, sizeof(int), 1, file);
+        if(!fread(&order, sizeof(int), 1, file)){
+            printf("Error reding order. Exiting...");
+            exit(-1);
+        }
 
         // reads values of matrix
         double matrix[order][order];
         int j = 0;
-
+        double t0, t1, t2; /* time limits */
+        t2 = 0.0;
         printf("---------------------File <%s>---------------------\n", argv[i]);
         printf("Amount of matrixes: <%d>\tOrder of matrixes: <%d>\n", amount, order);
         while (fread(&matrix, sizeof(matrix), 1, file))
-        { // reads matrix from .bin file
+        {
+            t0 = ((double) clock ()) / CLOCKS_PER_SEC;
+            // reads matrix from .bin file
             // calculates determinant, gaussian elimination is applied inside
-            printf("\tMatrix nº: <%d>\tDeterminant: <%.3f>\n", j + 1, determinant(order, matrix));
+            printf("\tMatrix nº: <%d>\tDeterminant: <%.3e>\n", j + 1, determinant(order, matrix));
             j++;
+            t1 = ( (double) clock() ) / CLOCKS_PER_SEC;
+            t2 += t1 -t0;
+            
            
         }
-        printf("\n\n");
+        printf ("\nElapsed time = %.6f s\n", t2);
     }
 
     return 0;
