@@ -58,7 +58,7 @@ double determinant(int order, double matrix[order][order])
             }
         }
     }
-    
+
     return det;
 }
 
@@ -111,7 +111,7 @@ int main(int argc, char *argv[])
             t0 = ((double) clock ()) / CLOCKS_PER_SEC;
             // reads matrix from .bin file
             // calculates determinant, gaussian elimination is applied inside
-            printf("\tMatrix nº: <%d>\tDeterminant: <%.3e>\n", j + 1, determinant(order, matrix));
+            printf("\t..Matrix nº: <%d>\tDeterminant: <%.3f>\n", j + 1, determinant(order, matrix));
             j++;
             t1 = ( (double) clock() ) / CLOCKS_PER_SEC;
             t2 += t1 -t0;
