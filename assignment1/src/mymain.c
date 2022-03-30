@@ -58,7 +58,7 @@ int isDelimiterChar(int ch)
 {
 
     int arr[] = {0x20, 0x09, 0x0A, 0x0D, 0x2D, 0x22, 0x5B, 0x5D, 0x28, 0x29,
-                    0x2E, 0x2C, 0x3B, 0x3B, 0x21, 0x3F, 0xAB, 0xBB, 0x3A, 8230, 8211, 8212, 8220, 8221};
+                 0x2E, 0x2C, 0x3B, 0x3B, 0x21, 0x3F, 0xAB, 0xBB, 0x3A, 8230, 8211, 8212, 8220, 8221};
 
     for (int i = 0; i < 24; i++)
     {
@@ -77,24 +77,41 @@ int isDelimiterChar(int ch)
  */
 int isConsonant(int ch)
 {
-    // check if char is between a and z or A and Z
-    if ((ch >= 0x41 && ch <= 0x5A) || (ch >= 0x61 && ch <= 0x7A))
+
+    if ((ch >= 0x41 && ch <= 0x5A) || (ch >= 0x61 && ch <= 0x7A)) // check if char is between a and z or A and Z //
     {
-        // then, if it isn't a vowel it will be a consonant
-        if (!isVowel(ch))
+
+        if (!isVowel(ch)) // then, if it isn't a vowel it will be a consonant //
             return 1;
     }
-    // Ç or ç case, which can be considered the consonant c
-    else if (ch == 0xE7 || ch == 0xC7)
+
+    else if (ch == 0xE7 || ch == 0xC7) // Ç or ç case, which can be considered the consonant c //
         return 1;
     return 0;
 }
 
+/**
+ * @brief verifies if the character is a an apostrophe or single quotation marks 
+ * 
+ * @param ch: the integer representation of the character
+ * @return int 
+ */
 int isApostrophe(int ch)
 {
     if (ch == 0x27 || ch == 0x60 || ch == 8216 || ch == 8217)
         return 1;
     return 0;
+}
+
+/**
+ * @brief Verifies if the character is alphanumeric
+ * 
+ * @param ch the integer representation of the character
+ * @return int 
+ */
+int isAlphaNumeric(int ch)
+{
+    return ((ch >= 48 && ch <= 57) || isVowel(ch) || isConsonant(ch));
 }
 
 void printStats(int vowels_counter, int consonant_counter, int total_words)
@@ -104,30 +121,39 @@ void printStats(int vowels_counter, int consonant_counter, int total_words)
     printf("\nTotal Words %d\n", total_words);
 }
 
+/**
+ * @brief Get the unicode integer value of a character
+ * Firstly, its checked how many bytes does the character codepoint requires.
+ * According to the number of bytes needed, more character may be needed to be 
+ * read from the text to compose the character. Example: "é" requires two bytes. 
+ * @param fp a pointer to the file
+ * @return int 
+ */
 int getchar_wrapper(FILE *fp)
 {
     int c = fgetc(fp);
+
     if (c == EOF)
         return EOF;
-    if (!(c & 0x80))
+    if ((c & 0x80) == 0)
     {
         // 1 byte :  0xxx xxxx
         return c;
     }
-    if ((c & 0xC0))
+    if ((c & 0xE0) == 0xC0)
     {
         // 2 bytes : 110x xxxx
-        return ((c & 0x1F) << 6) + (fgetc(fp) & 0x3F);
+        return ((c & 0x1F) << 6) | (fgetc(fp) & 0x3F);
     }
-    if ((c & 0xE0))
+    if ((c & 0xF0) == 0xE0)
     {
         // 3 bytes : 1110 xxxx
-        return ((c & 0x0F) << 12) + ((fgetc(fp) & 0x3F) << 6) + (fgetc(fp) & 0x3F);
+        return ((c & 0x0F) << 12) | ((fgetc(fp) & 0x3F) << 6) | (fgetc(fp) & 0x3F);
     }
-    if ((c & 0xF0))
+    if ((c & 0xF8) == 0xF0)
     {
         // 4 bytes : 1111 0xxx
-        return ((c & 0x07) << 18) + ((fgetc(fp) & 0x3F) << 12) + ((fgetc(fp) & 0x3F) << 6) + (fgetc(fp) & 0x3F);
+        return ((c & 0x07) << 18) | ((fgetc(fp) & 0x3F) << 12) | ((fgetc(fp) & 0x3F) << 6) | (fgetc(fp) & 0x3F);
     }
     return 0;
 }
@@ -139,10 +165,8 @@ void *read_file_thread(void *vargp)
     int vowels_counter = 0, consonant_counter = 0, total_words = 0;
     int in_word = 0;
     int lastCharConsonant = 0;
-    int c;
-    printf("<%s>\n", filename);
-    FILE *ptr = fopen(filename, "r");
 
+    FILE *ptr = fopen(filename, "r");
     if (!ptr)
     {
         printf("Error opening file.\nExiting...\n");
@@ -152,11 +176,14 @@ void *read_file_thread(void *vargp)
     while (1)
     {
         current = getchar_wrapper(ptr);
-        // printf("\ncurrent %lc", current);
 
         if (current == EOF)
         {
             break;
+        }
+        if (!isDelimiterChar(current) && !isAlphaNumeric(current) && !isApostrophe(current))
+        {
+            printf("\n not found %d", current);
         }
         if (!in_word)
         {
@@ -164,22 +191,29 @@ void *read_file_thread(void *vargp)
             {
                 continue;
             }
-            //TODO: Change to only increment counter if it is alphanumeric
-            in_word = 1;
-            total_words++;
-            // printf("\nnew word");
-            if (isVowel(current))
+
+            if (isAlphaNumeric(current) || current == 95)
             {
-                vowels_counter++;
+
+                in_word = 1;
+                total_words++;
+                if (isVowel(current))
+                {
+                    vowels_counter++;
+                }
+                lastCharConsonant = isConsonant(current);
             }
-            lastCharConsonant = isConsonant(current);
         }
 
         if (in_word)
         {
-            if (isVowel(current) || isConsonant(current))
+            if (isAlphaNumeric(current) || current == 95)
             {
                 lastCharConsonant = isConsonant(current);
+                if (lastCharConsonant)
+                {
+                    // printf("\nlast consonant %d", current);
+                }
                 continue;
             }
             else if (isDelimiterChar(current))
@@ -187,12 +221,13 @@ void *read_file_thread(void *vargp)
                 in_word = 0;
                 if (lastCharConsonant)
                 {
+                    printf("\n current delimiter %d", current);
                     consonant_counter++;
                 }
             }
         }
     }
-
+   
     printStats(vowels_counter, consonant_counter, total_words);
 
     pthread_exit(0);
@@ -202,6 +237,8 @@ int main(int argc, char *argv[])
 {
 
     char cwd[PATH_MAX];
+    double t0, t1, t2; /* time limits */
+    t2 = 0.0;
     if (getcwd(cwd, sizeof(cwd)) != NULL)
     {
         printf("Current working dir: %s\n", cwd);
@@ -219,7 +256,7 @@ int main(int argc, char *argv[])
     {
         printf("No arguments provided..");
     }
-
+    t0 = ((double)clock()) / CLOCKS_PER_SEC;
     for (counter = 1; counter < argc; counter++)
     {
         // read_file(argv[counter]);
@@ -230,4 +267,7 @@ int main(int argc, char *argv[])
     {
         pthread_join(tid[counter - 1], NULL);
     }
+    t1 = ((double)clock()) / CLOCKS_PER_SEC;
+    t2 += t1 - t0;
+    printf ("\nElapsed time = %.6f s\n", t2);
 }
