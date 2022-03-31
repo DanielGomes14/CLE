@@ -98,7 +98,7 @@ int isConsonant(int ch)
  */
 int isApostrophe(int ch)
 {
-    if (ch == 0x27 || ch == 0x60 || ch == 8216 || ch == 8217)
+    if (ch == 0x27  || ch == 8216 || ch == 8217)
         return 1;
     return 0;
 }
@@ -181,10 +181,6 @@ void *read_file_thread(void *vargp)
         {
             break;
         }
-        if (!isDelimiterChar(current) && !isAlphaNumeric(current) && !isApostrophe(current))
-        {
-            printf("\n not found %d", current);
-        }
         if (!in_word)
         {
             if (isDelimiterChar(current) || isApostrophe(current))
@@ -207,7 +203,7 @@ void *read_file_thread(void *vargp)
 
         if (in_word)
         {
-            if (isAlphaNumeric(current) || current == 95)
+            if (isAlphaNumeric(current) || current == 95 || isApostrophe(current))
             {
                 lastCharConsonant = isConsonant(current);
                 if (lastCharConsonant)
@@ -221,7 +217,6 @@ void *read_file_thread(void *vargp)
                 in_word = 0;
                 if (lastCharConsonant)
                 {
-                    printf("\n current delimiter %d", current);
                     consonant_counter++;
                 }
             }
