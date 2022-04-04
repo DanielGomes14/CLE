@@ -12,6 +12,7 @@ static void printUsage (char *cmdName);
  *  \brief Main function.
  *
  *  \param argc number of words of the command line
+ * 
  *  \param argv list of words of the command line
  *
  *  \return status of operation
