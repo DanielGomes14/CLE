@@ -119,13 +119,11 @@ static void printUsage (char *cmdName);
  *  \return status of operation
  */
 
-int processInput (int argc, char *argv[])
+int processInput (int argc, char *argv[], int* thread_amount)
 {
   /* process command line options */
 
   int opt;                                       /* selected option */
-  // char *fName = "no name";                       /* file name (initialized to "no name" by default) */
-  int val = -1;                                  /* numeric value (initialized to -1 by default) */
   
   int file_amount = 0;
   char** file_names = NULL; 
@@ -159,7 +157,7 @@ int processInput (int argc, char *argv[])
                      printUsage (basename (argv[0]));
                      return EXIT_FAILURE;
                    }
-                val = (int) atoi (optarg);
+                *thread_amount = (int) atoi (optarg);
                 break;
       case 'h': /* help mode */
                 printUsage (basename (argv[0]));
@@ -185,7 +183,7 @@ int processInput (int argc, char *argv[])
     char* nome = *(file_names + i);
     printf("\tfile: <%s>\n", nome);
   }
-  printf ("Numeric value = %d\n", val);
+  printf ("Numeric value = %d\n", *thread_amount);
   for (o = 0; o < argc; o++)
     printf ("Word %d = %s\n", o, argv[o]);
 

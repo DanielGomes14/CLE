@@ -24,16 +24,21 @@
  */
 int main(int argc, char *argv[]){
 
-    static int thread_amount = 0;
+    int thread_amount = 0;
 
-    // process command line information
+    // no inputs where given
     if(argc == 1){
         perror("No arguments were provided.");
         exit(-1);
     }
 
-    if(!processInput(argc, argv, &thread_amount))
+    // processes command line information
+    if(processInput(argc, argv, &thread_amount))
         exit(-1);    
+    
+
+    printf("THREAD AMOUNT: %d\n", thread_amount);
+    pthread_t t_id[thread_amount];
 
     return 0;
 }
