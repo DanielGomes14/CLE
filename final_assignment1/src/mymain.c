@@ -4,9 +4,10 @@
 #include <ctype.h>
 #include <locale.h>
 #include <pthread.h>
-
 #include <unistd.h>
 #include <limits.h>
+
+#include "./cmd/processCommandLine.h"
 
 /**
  * @brief Main function
@@ -23,11 +24,16 @@
  */
 int main(int argc, char *argv[]){
 
+    static int thread_amount = 0;
+
     // process command line information
     if(argc == 1){
         perror("No arguments were provided.");
         exit(-1);
     }
+
+    if(!processInput(argc, argv, &thread_amount))
+        exit(-1);    
 
     return 0;
 }
