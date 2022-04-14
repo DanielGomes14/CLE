@@ -28,7 +28,9 @@ int main(int argc, char *argv[])
 {
 
     int thread_amount = 0; // number of threads;
+    int file_amount = 0;
     int *status_p;         // pointer to execution status
+    char ** file_names; // array with the names of the files
 
     // no inputs where given
     if (argc == 1)
@@ -38,11 +40,18 @@ int main(int argc, char *argv[])
     }
 
     // processes command line information
-    if (processInput(argc, argv, &thread_amount))
+    if (processInput(argc, argv, &thread_amount, &file_amount, &file_names))
         exit(-1);
 
     printf("THREAD AMOUNT: %d\n", thread_amount);
-    //
+    printf("FILE AMOUNT: %d\n", file_amount);
+    
+    // printf("%s\n", file_names[0]);
+    // for(int i = 0; i < file_amount; i++){
+    //     printf("FILE NAME: %s\n", (file_names[i]));
+    // }
+
+    
     pthread_t tIdWorker[thread_amount];  //  workers internal thread id array
     unsigned int workers[thread_amount]; // workers application defined thread id array
 
@@ -86,6 +95,13 @@ int main(int argc, char *argv[])
 //     espera por workers
 //     end
 
+void produce(){
+    /*
+    
+    */
+
+}
+
 /**
  * @brief Worker Function
  * 
@@ -97,6 +113,12 @@ void *work(void * par){
 
     unsigned int id = *((unsigned int *) par), // worker id //
                val;  
+
+    // logic stuff
+
+    //mutex start
+    // save value on matrix
+    // mutex end
 
     //end work
     statusWorker[id] = EXIT_SUCCESS;

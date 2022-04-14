@@ -5,8 +5,7 @@
 
 typedef struct chunkInfo{
     FILE* f;
-    int start_offset;
-    int end_offset;
+    int buffer_size;
 } chunkInfo, *pChunkInfo;
 
 #endif
