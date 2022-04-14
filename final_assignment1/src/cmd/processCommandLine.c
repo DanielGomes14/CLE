@@ -119,14 +119,14 @@ static void printUsage (char *cmdName);
  *  \return status of operation
  */
 
-int processInput (int argc, char *argv[], int* thread_amount)
+int processInput (int argc, char *argv[], int* thread_amount, int* file_amount, char*** file_names)
 {
   /* process command line options */
 
   int opt;                                       /* selected option */
   
-  int file_amount = 0;
-  char** file_names = NULL; 
+  // int file_amount = 0;
+  char** aux_file_names = NULL; 
 
   opterr = 0;
   do
@@ -146,14 +146,14 @@ int processInput (int argc, char *argv[], int* thread_amount)
 
                   if(next[0] != '-'){  // if element isn't an option, then its a file name
                     
-                    if(file_amount == 0){  // first file name
-                      file_names = malloc(sizeof(char*) * ++file_amount);
-                      *(file_names + file_amount - 1) = next;
+                    if(*file_amount == 0){  // first file name
+                      aux_file_names = malloc(sizeof(char*) * ++(*file_amount));
+                      *(aux_file_names + (*file_amount) - 1) = next;
                     }
                     else{  // following file names
-                      file_amount++;
-                      file_names = realloc(file_names, sizeof(char*) * file_amount);
-                      *(file_names + file_amount -1) = next;
+                      (*file_amount)++;
+                      aux_file_names = realloc(aux_file_names, sizeof(char*) * (*file_amount));
+                      *(aux_file_names + (*file_amount) -1) = next;
                     }
 
                   }
@@ -192,8 +192,8 @@ int processInput (int argc, char *argv[], int* thread_amount)
 
   // printf ("File name = %s\n", fName);
   printf("File names:\n");
-  for(int i = 0; i < file_amount; i++){
-    char* nome = *(file_names + i);
+  for(int i = 0; i < (*file_amount); i++){
+    char* nome = *(aux_file_names + i);
     printf("\tfile: <%s>\n", nome);
   }
   printf ("Numeric value = %d\n", *thread_amount);
@@ -201,6 +201,8 @@ int processInput (int argc, char *argv[], int* thread_amount)
     printf ("Word %d = %s\n", o, argv[o]);
 
   /* that's all */
+
+  *file_names = aux_file_names;
 
   return EXIT_SUCCESS;
 
