@@ -138,18 +138,31 @@ int processInput (int argc, char *argv[], int* thread_amount)
                   return EXIT_FAILURE;
                 }
 
-                // fName = optarg;
-                
-                if(file_amount == 0){
-                  file_names = malloc(sizeof(char*) * ++file_amount);
-                  *(file_names + file_amount - 1) = optarg;
-                }
-                else{
-                  file_amount++;
-                  file_names = realloc(file_names, sizeof(char*) * file_amount);
-                  *(file_names + file_amount -1) = optarg;
-                }
+                int index = optind - 1;
+                char* next = NULL;
 
+                while(index < argc){
+                  next = strdup(argv[index++]);  // get next element in argv
+
+                  if(next[0] != '-'){  // if element isn't an option, then its a file name
+                    
+                    if(file_amount == 0){  // first file name
+                      file_names = malloc(sizeof(char*) * ++file_amount);
+                      *(file_names + file_amount - 1) = next;
+                    }
+                    else{  // following file names
+                      file_amount++;
+                      file_names = realloc(file_names, sizeof(char*) * file_amount);
+                      *(file_names + file_amount -1) = next;
+                    }
+
+                  }
+                  else{  // element is an option
+                    free(next); // free memory from strdup
+                    break;
+                  }
+
+                }
                 break;
       case 'n': /* numeric argument */
                 if (atoi (optarg) <= 0)
