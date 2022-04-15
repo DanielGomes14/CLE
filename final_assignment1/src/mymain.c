@@ -8,6 +8,9 @@
 #include <limits.h>
 
 #include "./cmd/processCommandLine.h"
+#include "./shared/shared.h"
+
+#define CHUNK_SIZE 200
 
 int *statusWorker;
 
@@ -28,9 +31,9 @@ int main(int argc, char *argv[])
 {
 
     int thread_amount = 0; // number of threads;
-    int file_amount = 0;
+    int file_amount = 0;   // amount of files
     int *status_p;         // pointer to execution status
-    char ** file_names; // array with the names of the files
+    char ** file_names;    // array with the names of the files
 
     // no inputs where given
     if (argc == 1)
@@ -55,6 +58,9 @@ int main(int argc, char *argv[])
     pthread_t tIdWorker[thread_amount];  //  workers internal thread id array
     unsigned int workers[thread_amount]; // workers application defined thread id array
 
+    // TODO: check if this can be extern 
+    int results[3][file_amount];  // structure to save the results of each file
+
     // initialise workers array
     for (int t_ind = 0; t_ind < thread_amount; t_ind++)
         workers[t_ind] = t_ind;
@@ -70,6 +76,9 @@ int main(int argc, char *argv[])
             exit(EXIT_FAILURE);
         }
     }
+
+    produceChunks(&file_names, file_amount);
+
     for (int t = 0; t < thread_amount; t++)
     {
         if (pthread_join(tIdWorker[t], (void *)&status_p) != 0) /* thread producer */
@@ -95,11 +104,31 @@ int main(int argc, char *argv[])
 //     espera por workers
 //     end
 
-void produce(){
+void produceChunks(char*** file_names, int file_amount){
     /*
-    
+    for file
+        open file
+        for chunk in file
+            dup file pointer
+            create chunk
+            put chunk in shared region
     */
+   char** file_names = (*file_names);
+   for(int i = 0; i < file_amount; i++){
+       char* file_name = file_names[i];
 
+        FILE* f = fopen(file_name, "r");
+        if(!f){
+            perror("Error opening file.");
+            exit(-1);
+        }
+
+        chunkInfo chunk;
+        chunk.f = fdopen (dup (fileno (f)), "r");
+
+        // TODO: read chunk, put offset in chunkInfo, put chunk in shared region
+
+   }
 }
 
 /**
