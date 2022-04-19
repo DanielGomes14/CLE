@@ -3,9 +3,13 @@
 
 #include <stdio.h>
 
+#define CHUNK_SIZE 200
+
 typedef struct chunkInfo{
     FILE* f;
-    int buffer_size;
+    int bufferSize;
+    int fileId;
+    int** matrixPtr;   // [3][fileAmount]
 } chunkInfo, *pChunkInfo;
 
 #endif
