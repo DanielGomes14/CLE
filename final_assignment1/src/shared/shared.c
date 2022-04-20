@@ -5,10 +5,10 @@
 #include <stdbool.h>
 #include <errno.h>
 
-extern int vowelCounter = 0;
-extern int consonantCounter = 0;
-extern int wordCount = 0;
 // https://stackoverflow.com/questions/50083744/how-to-create-an-array-without-declaring-the-size-in-c
+
+/** \brief flag */
+extern int stillProcessing;
 
 /** \brief status of main(The Producer)*/
 extern int statusProd;
@@ -17,7 +17,10 @@ extern int statusProd;
 extern int *statusWorkers;
 
 /** \brief Amount of worker threads*/
-extern int thread_amount;
+extern int threadAmount;
+
+/** \brief Amount of files*/
+extern int fileAmount;
 
 /** \brief storage region*/
 static chunkInfo mem[2];
@@ -94,6 +97,7 @@ void storeChunk(chunkInfo info)
      }
 
 }
+
 chunkInfo getChunk(unsigned int workerId) {
 
     chunkInfo info;
@@ -106,13 +110,28 @@ chunkInfo getChunk(unsigned int workerId) {
     }
     pthread_once (&init, initialization);                                              /* internal data initialization */
 
+    if(!full && !stillProcessing){
+        statusWorkers[workerId] = pthread_mutex_unlock(&accessCR);
+        info.bufferSize = -1;
+        return info;
+    }
+
     while ((ii == ri) && !full)                                           /* wait if the data transfer region is empty */
-    { if ((statusWorkers[workerId] = pthread_cond_wait (&fifoEmpty, &accessCR)) != 0)
-        { errno = statusWorkers[workerId];                                                          /* save error in errno */
+    { 
+        if ((statusWorkers[workerId] = pthread_cond_wait (&fifoEmpty, &accessCR)) != 0)
+        { 
+            errno = statusWorkers[workerId];                                                          /* save error in errno */
             perror ("error on waiting in fifoEmpty");
             statusWorkers[workerId] = EXIT_FAILURE;
             pthread_exit (&statusWorkers[workerId]);
         }
+
+        if(!full && !stillProcessing){
+            statusWorkers[workerId] = pthread_mutex_unlock(&accessCR);
+            info.bufferSize = -1;
+            return info;
+        }
+
     }
 
     info = mem[ri];

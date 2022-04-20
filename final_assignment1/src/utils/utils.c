@@ -8,10 +8,12 @@
 #include <unistd.h>
 #include <limits.h>
 
+#include "../shared/shared.h"
+
 /**
  * @brief check if char is a vowel, considering the Portuguese Alphabet cases
  *        Example: á, À ....
- * 
+ *
  * \param ch: a int representation of a  character
  * \return 1 if the char is a valid Vowel or 0 if not.
  */
@@ -51,7 +53,7 @@ int isVowel(int ch)
 
 /**
  * @brief useful to know where a new word, line, etc occurs
- * 
+ *
  * \param ch: a character
  * \return 1 if the char is a valid Delimiter or 0 if not.
  */
@@ -74,7 +76,7 @@ int isDelimiterChar(int ch)
 /**
  * @brief check if char is a consonant, considering the Portuguese Alphabet cases
  *     .. Example: Ç, ç
- * 
+ *
  * \param ch: a int representation of a character
  * \return 1 if the char is a valid Vowel or 0 if not.
  */
@@ -94,23 +96,23 @@ int isConsonant(int ch)
 }
 
 /**
- * @brief verifies if the character is a an apostrophe or single quotation marks 
- * 
+ * @brief verifies if the character is a an apostrophe or single quotation marks
+ *
  * @param ch: the integer representation of the character
- * @return int 
+ * @return int
  */
 int isApostrophe(int ch)
 {
-    if (ch == 0x27  || ch == 8216 || ch == 8217)
+    if (ch == 0x27 || ch == 8216 || ch == 8217)
         return 1;
     return 0;
 }
 
 /**
  * @brief Verifies if the character is alphanumeric
- * 
+ *
  * @param ch the integer representation of the character
- * @return int 
+ * @return int
  */
 int isAlphaNumeric(int ch)
 {
@@ -119,10 +121,10 @@ int isAlphaNumeric(int ch)
 
 /**
  * @brief Prints to stdout the gathered information.
- * 
- * @param vowels_counter 
- * @param consonant_counter 
- * @param total_words 
+ *
+ * @param vowels_counter
+ * @param consonant_counter
+ * @param total_words
  */
 void printStats(int vowels_counter, int consonant_counter, int total_words)
 {
@@ -134,11 +136,11 @@ void printStats(int vowels_counter, int consonant_counter, int total_words)
 /**
  * @brief Get the unicode integer value of a character
  * Firstly, its checked how many bytes does the character codepoint requires.
- * According to the number of bytes needed, more character may be needed to be 
- * read from the text to compose the character. Example: "é" requires two bytes. 
- * 
+ * According to the number of bytes needed, more character may be needed to be
+ * read from the text to compose the character. Example: "é" requires two bytes.
+ *
  * @param fp a pointer to the file
- * @return int 
+ * @return int
  */
 int getchar_wrapper(FILE *fp)
 {
@@ -167,4 +169,65 @@ int getchar_wrapper(FILE *fp)
         return ((c & 0x07) << 18) | ((fgetc(fp) & 0x3F) << 12) | ((fgetc(fp) & 0x3F) << 6) | (fgetc(fp) & 0x3F);
     }
     return 0;
+}
+
+void processChunk(chunkInfo chunk){
+    int totalRead = 0, in_word = 0;
+    int vowels_counter = 0, consonant_counter = 0, total_words = 0;
+    int lastCharConsonant = 0;
+    int current;
+    
+    while (totalRead < chunk.bufferSize){
+         current = getchar_wrapper(chunk.f);
+
+        if (current == EOF)
+        {
+            break;
+        }
+        if (!in_word)
+        {
+            if (isDelimiterChar(current) || isApostrophe(current))
+            {
+                continue;
+            }
+
+            if (isAlphaNumeric(current) || current == 95)
+            {
+
+                in_word = 1;
+                total_words++;
+                if (isVowel(current))
+                {
+                    vowels_counter++;
+                }
+                lastCharConsonant = isConsonant(current);
+            }
+        }
+
+        if (in_word)
+        {
+            if (isAlphaNumeric(current) || current == 95 || isApostrophe(current))
+            {
+                lastCharConsonant = isConsonant(current);
+                if (lastCharConsonant)
+                {
+                    // printf("\nlast consonant %d", current);
+                }
+                continue;
+            }
+            else if (isDelimiterChar(current))
+            {
+                in_word = 0;
+                if (lastCharConsonant)
+                {
+                    consonant_counter++;
+                }
+            }
+        }
+    }
+
+    // writes results in struct, row by row
+    chunk.matrixPtr[chunk.fileId][0] += consonant_counter;
+    chunk.matrixPtr[chunk.fileId][1] += vowels_counter;
+    chunk.matrixPtr[chunk.fileId][2] += total_words;
 }

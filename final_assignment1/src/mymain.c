@@ -9,10 +9,12 @@
 
 #include "./cmd/processCommandLine.h"
 #include "./shared/shared.h"
-
+#include "./utils/utils.h"
 #define CHUNK_SIZE 200
 
-int *statusWorker;
+int *statusWorkers;
+
+static void* work(void* id);
 
 /**
  * @brief Main function
@@ -34,6 +36,8 @@ int main(int argc, char *argv[])
     int fileAmount = 0;   // amount of files
     int *status_p;        // pointer to execution status
     char **file_names;    // array with the names of the files
+
+    int stillProcessing = 1;
 
     // no inputs where given
     if (argc == 1)
@@ -60,14 +64,14 @@ int main(int argc, char *argv[])
     // pass reference to the shared structure
     // 3 counters (consonant, vowel and word)
     // TODO: Pass 3 to Const variable
-    int results[3][fileAmount]; // structure to save the results of each file
+    int results[fileAmount][3]; // structure to save the results of each file
     memset(results, 0, sizeof(results[3][fileAmount]) * 3 * fileAmount);
 
     // initialise workers array
     for (int t_ind = 0; t_ind < threadAmount; t_ind++)
         workers[t_ind] = t_ind;
 
-    statusWorker = malloc(sizeof(int) * threadAmount);
+    statusWorkers = malloc(sizeof(int) * threadAmount);
 
     for (int t = 0; t < threadAmount; t++)
     {
@@ -80,6 +84,8 @@ int main(int argc, char *argv[])
     }
 
     produceChunks(&file_names, fileAmount, &results);
+
+    stillProcessing = 0;  // atualize flag
 
     for (int t = 0; t < threadAmount; t++)
     {
@@ -116,7 +122,7 @@ void produceChunks(char ***file_names, int fileAmount, int ***results)
             create chunk
             put chunk in shared region
     */
-    char **file_names = (*file_names);
+    char **fileNames = (*file_names);
     int fileSize, fileOffset = 0;
     for (int i = 0; i < fileAmount; i++)
     {
@@ -138,26 +144,39 @@ void produceChunks(char ***file_names, int fileAmount, int ***results)
         int chunkQuantity = (fileSize / CHUNK_SIZE) + 1;
         int lastChunkSize = fileSize % CHUNK_SIZE;
 
-        // create chunks
-        for (int i = 0; i < chunkQuantity; i++)
+        // while sum length(readden chunks + next chunk) inferior to max file length
+        while (SEEK_CUR + CHUNK_SIZE <= fileSize)
         {
-            // chunk initialization
+            int chunkStart = SEEK_CUR;
             chunkInfo chunk;
             chunk.f = fdopen(dup(fileno(f)), "r"); // duplicate file pointer
             chunk.fileId = i;
+            chunk.fileAmount = fileAmount;
             chunk.matrixPtr = *results;
-            // check if it is the last Chunk
-            chunk.bufferSize = i == chunkQuantity - 1 ? lastChunkSize : CHUNK_SIZE;
-            
-            // put chunk on shared region
 
-            // if there is still chunks for processing
-            if(i != chunkQuantity - 1)
-                fseek(f, 0L, SEEK_SET + ((i + 1) * CHUNK_SIZE));
+            int extraStuff = 0;
+            while (!isDelimiterChar(getchar_wrapper(f)))
+            {
+                // does nothing here, just updates
+            }
+
+            chunk.bufferSize = SEEK_CUR - chunkStart;
+
+            storeChunk(chunk);
         }
 
+        // creates last chunk
+        if (SEEK_CUR < fileSize)
+        {
+            chunkInfo chunk;
+            chunk.f = fdopen(dup(fileno(f)), "r"); // duplicate file pointer
+            chunk.fileId = i;
+            chunk.fileAmount = fileAmount;
+            chunk.matrixPtr = *results;
+            chunk.bufferSize = fileSize - SEEK_CUR;
 
-        // TODO: read chunk, put offset in chunkInfo, put chunk in shared region
+            storeChunk(chunk);
+        }
     }
 }
 
@@ -167,20 +186,42 @@ void produceChunks(char ***file_names, int fileAmount, int ***results)
  * Does the worker tasks
  * @param par pointer to application defined worker identification
  */
-void *work(void *par)
+static void *work(void *par)
 {
+    /*
+    get worker id
+    get pointer to result matrix
+    while(files exist to be processed)
+        while(fifoEmpty)
+            await
+        get chunkInfo
+        process chunkInfo
+        start mutex
+            save results in result matrix
+        end mutex
+    */
+
     // TODO: call worker functions
+    // TODO: make initial verification to check if main is still creating chunks
 
-    unsigned int id = *((unsigned int *)par), // worker id //
-        val;
+    // get thread id
+    unsigned int id = *((unsigned int *)par); // worker id //
 
-    // logic stuff
+    while(1){
+        // get chunk
+        chunkInfo chunk = getChunk(id);
 
-    // mutex start
-    //  save value on matrix
-    //  mutex end
+        // no more chunks to be processed
+        if(chunk.bufferSize == -1){
+            statusWorkers[id] = EXIT_SUCCESS;
+            pthread_exit(&statusWorkers[id]);
+        }
+
+        // count words
+        processChunk(chunk);
+    }
 
     // end work
-    statusWorker[id] = EXIT_SUCCESS;
-    pthread_exit(&statusWorker[id]);
+    statusWorkers[id] = EXIT_SUCCESS;
+    pthread_exit(&statusWorkers[id]);
 }

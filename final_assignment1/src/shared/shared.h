@@ -9,7 +9,12 @@ typedef struct chunkInfo{
     FILE* f;
     int bufferSize;
     int fileId;
-    int** matrixPtr;   // [3][fileAmount]
+    int fileAmount;
+    int** matrixPtr;   // [fileAmount][3]
 } chunkInfo, *pChunkInfo;
+
+void storeChunk(chunkInfo info);
+
+chunkInfo getChunk(unsigned int workerId);
 
 #endif
