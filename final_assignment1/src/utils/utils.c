@@ -142,7 +142,7 @@ void printStats(int vowels_counter, int consonant_counter, int total_words)
  * @param fp a pointer to the file
  * @return int
  */
-int getchar_wrapper(FILE *fp)
+int getchar_wrapper(FILE *fp, int *totalBytesRead)
 {
     int c = fgetc(fp);
 
@@ -151,39 +151,69 @@ int getchar_wrapper(FILE *fp)
     if ((c & 0x80) == 0)
     {
         // 1 byte :  0xxx xxxx
+        *totalBytesRead = 1;
         return c;
     }
     if ((c & 0xE0) == 0xC0)
     {
         // 2 bytes : 110x xxxx
+        *totalBytesRead = 2;
         return ((c & 0x1F) << 6) | (fgetc(fp) & 0x3F);
     }
     if ((c & 0xF0) == 0xE0)
     {
         // 3 bytes : 1110 xxxx
+        *totalBytesRead = 3;
         return ((c & 0x0F) << 12) | ((fgetc(fp) & 0x3F) << 6) | (fgetc(fp) & 0x3F);
     }
     if ((c & 0xF8) == 0xF0)
     {
         // 4 bytes : 1111 0xxx
+        *totalBytesRead = 4;
         return ((c & 0x07) << 18) | ((fgetc(fp) & 0x3F) << 12) | ((fgetc(fp) & 0x3F) << 6) | (fgetc(fp) & 0x3F);
     }
     return 0;
 }
 
-void processChunk(chunkInfo chunk){
+void processChunk(chunkInfo chunk)
+{
     int totalRead = 0, in_word = 0;
     int vowels_counter = 0, consonant_counter = 0, total_words = 0;
     int lastCharConsonant = 0;
     int current;
-    
-    while (totalRead < chunk.bufferSize){
-         current = getchar_wrapper(chunk.f);
+    int totalBytesRead = 0;    // num of bytes read for a char.
+    int shouldProcessMore = 0; // flag used to check if should read more bytes than the specified threshold
+    while (1)
+    {
+        current = getchar_wrapper(chunk.f, &totalBytesRead);
+        if (isDelimiterChar(current))
+        {
+            break;
+        }
+    }
+
+    while (totalRead < chunk.bufferSize || shouldProcessMore)
+    {
+        current = getchar_wrapper(chunk.f, &totalBytesRead);
 
         if (current == EOF)
         {
             break;
         }
+        if (totalRead + totalBytesRead >= chunk.bufferSize)
+        {
+            if (isAlphaNumeric(current))
+            {
+                shouldProcessMore = 1;
+            }
+            else if (isDelimiterChar(current))
+            {
+                shouldProcessMore = 0;
+                break;
+            }
+        }
+        totalRead+=totalBytesRead;
+
         if (!in_word)
         {
             if (isDelimiterChar(current) || isApostrophe(current))

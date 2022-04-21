@@ -169,37 +169,23 @@ void produceChunks(char ***fileNames, int fileAmount, int ***results)
         int chunkQuantity = (fileSize / CHUNK_SIZE) + 1;
         int lastChunkSize = fileSize % CHUNK_SIZE;
 
-        // while sum length(readden chunks + next chunk) inferior to max file length
-        while (SEEK_CUR + CHUNK_SIZE <= fileSize)
+        // create chunks
+        for (int i = 0; i < chunkQuantity; i++)
         {
-            int chunkStart = SEEK_CUR;
+            // chunk initialization
             chunkInfo chunk;
             chunk.f = fdopen(dup(fileno(f)), "r"); // duplicate file pointer
             chunk.fileId = i;
-            chunk.fileAmount = fileAmount;
             chunk.matrixPtr = *results;
+            // check if it is the last Chunk
+            chunk.bufferSize = i == chunkQuantity - 1 ? lastChunkSize : CHUNK_SIZE;
 
-            while (!isDelimiterChar(getchar_wrapper(f)))
-            {
-                // does nothing here, just updates
-            }
-
-            chunk.bufferSize = SEEK_CUR - chunkStart;
-
+            // put chunk on shared region
             storeChunk(chunk);
-        }
 
-        // creates last chunk
-        if (SEEK_CUR < fileSize)
-        {
-            chunkInfo chunk;
-            chunk.f = fdopen(dup(fileno(f)), "r"); // duplicate file pointer
-            chunk.fileId = i;
-            chunk.fileAmount = fileAmount;
-            chunk.matrixPtr = *results;
-            chunk.bufferSize = fileSize - SEEK_CUR;
-
-            storeChunk(chunk);
+            // if there is still chunks for processing
+            if (i != chunkQuantity - 1)
+                fseek(f, 0L, SEEK_SET + ((i + 1) * CHUNK_SIZE));
         }
     }
 }
