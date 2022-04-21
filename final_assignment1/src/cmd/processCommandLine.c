@@ -40,8 +40,8 @@ int processInput (int argc, char *argv[], int* thread_amount, int* file_amount, 
                 int index = optind - 1;
                 char* next = NULL;
 
-                while(index < argc){
-                  next = strdup(argv[index++]);  // get next element in argv
+                while(index < argc){ 
+                  next = argv[index++];     // get next element in argv
 
                   if(next[0] != '-'){  // if element isn't an option, then its a file name
                     
@@ -56,10 +56,8 @@ int processInput (int argc, char *argv[], int* thread_amount, int* file_amount, 
                     }
 
                   }
-                  else{  // element is an option
-                    free(next); // free memory from strdup
+                  else  // element is an option
                     break;
-                  }
 
                 }
                 break;
@@ -105,7 +103,7 @@ int processInput (int argc, char *argv[], int* thread_amount, int* file_amount, 
 
   return EXIT_SUCCESS;
 
-} /* end of main */
+}
 
 /**
  *  \brief Print command usage.
