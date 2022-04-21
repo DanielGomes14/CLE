@@ -14,7 +14,18 @@
 
 int *statusWorkers;
 
-static void* work(void* id);
+/** \brief producer threads return status array */
+int statusProd[1];
+
+int stillProcessing;
+
+/** \brief producer life cycle routine */
+static void *producer(void *id);
+/** \brief worker life cycle routine */
+static void *work(void *id);
+
+/** \brief function used to produce chunks */
+void produceChunks(char ***fileNames, int fileAmount, int ***results);
 
 /**
  * @brief Main function
@@ -35,9 +46,9 @@ int main(int argc, char *argv[])
     int threadAmount = 0; // number of threads;
     int fileAmount = 0;   // amount of files
     int *status_p;        // pointer to execution status
-    char **file_names;    // array with the names of the files
+    char **fileNames;     // array with the names of the files
 
-    int stillProcessing = 1;
+    stillProcessing = 1;
 
     // no inputs where given
     if (argc == 1)
@@ -47,18 +58,12 @@ int main(int argc, char *argv[])
     }
 
     // processes command line information
-    if (processInput(argc, argv, &threadAmount, &fileAmount, &file_names))
+    if (processInput(argc, argv, &threadAmount, &fileAmount, &fileNames))
         exit(-1);
 
-    printf("THREAD AMOUNT: %d\n", threadAmount);
-    printf("FILE AMOUNT: %d\n", fileAmount);
-
-    // printf("%s\n", file_names[0]);
-    // for(int i = 0; i < fileAmount; i++){
-    //     printf("FILE NAME: %s\n", (file_names[i]));
-    // }
-
+    pthread_t tIdProd[1];               /* producers internal thread id array */
     pthread_t tIdWorker[threadAmount];  //  workers internal thread id array
+    unsigned int prod[1];               /* producers application defined thread id array */
     unsigned int workers[threadAmount]; // workers application defined thread id array
 
     // pass reference to the shared structure
@@ -73,23 +78,35 @@ int main(int argc, char *argv[])
 
     statusWorkers = malloc(sizeof(int) * threadAmount);
 
+    // initialize producer;
+    prod[0] = 0;
+
+    // arguments to be passed to producer starting method
+    threadData args;
+    args.thread_id = prod[0];
+    args.fileAmount = fileAmount;
+    args.fileNames = &fileNames;
+    args.results = &results;
+
+    if (pthread_create(&tIdProd[0], NULL, producer, (void *)&args) != 0) /* thread producer */
+    {
+        perror("error on creating thread producer");
+        exit(EXIT_FAILURE);
+    }
+
     for (int t = 0; t < threadAmount; t++)
     {
         // create(t)
-        if (pthread_create(&tIdWorker[t], NULL, work, workers[t]) != 0) /* thread producer */
+        if (pthread_create(&tIdWorker[t], NULL, work, (void *)&workers[t]) != 0) /* thread consumer */
         {
             perror("error on creating thread worker");
             exit(EXIT_FAILURE);
         }
     }
 
-    produceChunks(&file_names, fileAmount, &results);
-
-    stillProcessing = 0;  // atualize flag
-
     for (int t = 0; t < threadAmount; t++)
     {
-        if (pthread_join(tIdWorker[t], (void *)&status_p) != 0) /* thread producer */
+        if (pthread_join(tIdWorker[t], (void *)&status_p) != 0) /* thread consumer */
         {
             perror("error on waiting for thread worker");
             exit(EXIT_FAILURE);
@@ -98,6 +115,14 @@ int main(int argc, char *argv[])
         printf("thread worker, with id %d, has terminated: ", t);
         printf("its status was %d\n", *status_p);
     }
+
+    if (pthread_join(tIdProd[0], (void *)&status_p) != 0) /* thread producer */
+    {
+        perror("error on waiting for thread producer");
+        exit(EXIT_FAILURE);
+    }
+    printf("thread producer, with id %u, has terminated: ", 0);
+    printf("its status was %d\n", *status_p);
 
     return 0;
 }
@@ -112,7 +137,7 @@ int main(int argc, char *argv[])
 //     espera por workers
 //     end
 
-void produceChunks(char ***file_names, int fileAmount, int ***results)
+void produceChunks(char ***fileNames, int fileAmount, int ***results)
 {
     /*
     for file
@@ -122,8 +147,8 @@ void produceChunks(char ***file_names, int fileAmount, int ***results)
             create chunk
             put chunk in shared region
     */
-    char **fileNames = (*file_names);
-    int fileSize, fileOffset = 0;
+    char **file_names = (*fileNames);
+    int fileSize = 0;
     for (int i = 0; i < fileAmount; i++)
     {
         char *file_name = file_names[i];
@@ -154,7 +179,6 @@ void produceChunks(char ***file_names, int fileAmount, int ***results)
             chunk.fileAmount = fileAmount;
             chunk.matrixPtr = *results;
 
-            int extraStuff = 0;
             while (!isDelimiterChar(getchar_wrapper(f)))
             {
                 // does nothing here, just updates
@@ -178,6 +202,17 @@ void produceChunks(char ***file_names, int fileAmount, int ***results)
             storeChunk(chunk);
         }
     }
+}
+
+static void *producer(void *par)
+{
+    unsigned int id = *((unsigned int *)par); /* producer id */
+    printf("\nteste");
+    //  produceChunks(&fileNames, fileAmount, &results);
+
+    // stillProcessing = 0; // update flag
+    statusProd[id] = EXIT_SUCCESS;
+    pthread_exit(&statusProd[id]);
 }
 
 /**
@@ -207,12 +242,14 @@ static void *work(void *par)
     // get thread id
     unsigned int id = *((unsigned int *)par); // worker id //
 
-    while(1){
+    while (1)
+    {
         // get chunk
         chunkInfo chunk = getChunk(id);
 
         // no more chunks to be processed
-        if(chunk.bufferSize == -1){
+        if (chunk.bufferSize == -1)
+        {
             statusWorkers[id] = EXIT_SUCCESS;
             pthread_exit(&statusWorkers[id]);
         }

@@ -5,6 +5,14 @@
 
 #define CHUNK_SIZE 200
 
+
+typedef struct threadData{
+   unsigned int  thread_id;
+   int fileAmount;
+   char ***fileNames;
+   int **results;
+} threadData, *pthreadData;
+
 typedef struct chunkInfo{
     FILE* f;
     int bufferSize;
