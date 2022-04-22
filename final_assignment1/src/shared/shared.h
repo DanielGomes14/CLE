@@ -13,6 +13,11 @@ typedef struct threadData{
    int **results;
 } threadData, *pthreadData;
 
+typedef struct workerData{
+    unsigned int threadId;
+    int* results;
+} workerData, pworkerData;
+
 typedef struct chunkInfo{
     FILE* f;
     int bufferSize;
@@ -24,5 +29,7 @@ typedef struct chunkInfo{
 void storeChunk(chunkInfo info);
 
 chunkInfo getChunk(unsigned int workerId);
+
+void processChunks(unsigned int workerId, int* results);
 
 #endif

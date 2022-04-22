@@ -14,9 +14,10 @@ int isAlphaNumeric(int ch);
 
 void printStats(int vowels_counter, int consonant_counter, int total_words);
 
-void processChunk(chunkInfo chunk);
+void processChunk1(chunkInfo chunk);
 
 int getchar_wrapper(FILE *fp, int* totalBytesRead);
 
+void processChunk2(int* chunk, int chunkLenght, int* vowel, int* consonat, int* words);
 
 #endif

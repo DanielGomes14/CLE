@@ -22,10 +22,14 @@ int processInput (int argc, char *argv[], int* thread_amount, int* file_amount, 
 {
   /* process command line options */
 
-  int opt;                                       /* selected option */
-  
-  // int file_amount = 0;
   char** aux_file_names = NULL; 
+  int opt;    // selected option
+
+  if(argc <= 3){
+    perror("No/few arguments were provided.");
+    printUsage(basename("PROGRAM"));
+    return EXIT_FAILURE;
+  }
 
   opterr = 0;
   do
@@ -40,8 +44,8 @@ int processInput (int argc, char *argv[], int* thread_amount, int* file_amount, 
                 int index = optind - 1;
                 char* next = NULL;
 
-                while(index < argc){
-                  next = strdup(argv[index++]);  // get next element in argv
+                while(index < argc){ 
+                  next = argv[index++];     // get next element in argv
 
                   if(next[0] != '-'){  // if element isn't an option, then its a file name
                     
@@ -56,10 +60,8 @@ int processInput (int argc, char *argv[], int* thread_amount, int* file_amount, 
                     }
 
                   }
-                  else{  // element is an option
-                    free(next); // free memory from strdup
+                  else  // element is an option
                     break;
-                  }
 
                 }
                 break;
@@ -87,7 +89,6 @@ int processInput (int argc, char *argv[], int* thread_amount, int* file_amount, 
        return EXIT_FAILURE;
      }
 
-  int o;                                          /* counting variable */
 
   // printf ("File name = %s\n", fName);
   printf("File names:\n");
@@ -96,8 +97,8 @@ int processInput (int argc, char *argv[], int* thread_amount, int* file_amount, 
     printf("\tfile: <%s>\n", nome);
   }
   printf ("Numeric value = %d\n", *thread_amount);
-  for (o = 0; o < argc; o++)
-    printf ("Word %d = %s\n", o, argv[o]);
+  // for (int o = 0; o < argc; o++)
+  //   printf ("Word %d = %s\n", o, argv[o]);
 
   /* that's all */
 
@@ -105,7 +106,7 @@ int processInput (int argc, char *argv[], int* thread_amount, int* file_amount, 
 
   return EXIT_SUCCESS;
 
-} /* end of main */
+}
 
 /**
  *  \brief Print command usage.
