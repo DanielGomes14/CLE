@@ -30,4 +30,6 @@ void storeChunk(chunkInfo info);
 
 chunkInfo getChunk(unsigned int workerId);
 
+void processChunks(unsigned int workerId, int* results);
+
 #endif

@@ -135,7 +135,7 @@ void printStats(int vowels_counter, int consonant_counter, int total_words)
 
 /**
  * @brief Get the unicode integer value of a character
- * Firstly, its checked how many bytes does the character codepoint requires.
+ * Firstly, it's checked how many bytes does the character codepoint requires.
  * According to the number of bytes needed, more character may be needed to be
  * read from the text to compose the character. Example: "é" requires two bytes.
  *
@@ -175,7 +175,40 @@ int getchar_wrapper(FILE *fp, int *totalBytesRead)
     return 0;
 }
 
-void processChunk(chunkInfo chunk)
+int getchar_wrapper2(int* ptr, int *totalBytesRead, int indx)
+{
+    int c = *ptr;
+
+    if (c == EOF)
+        return EOF;
+    if ((c & 0x80) == 0)
+    {
+        // 1 byte :  0xxx xxxx
+        *totalBytesRead = 1;
+        return c;
+    }
+    if (((c & 0xE0) == 0xC0) && (indx + 1 <= 200))
+    {
+        // 2 bytes : 110x xxxx
+        *totalBytesRead = 2;
+        return ((c & 0x1F) << 6) | (*(ptr +1) & 0x3F);
+    }
+    if ((c & 0xF0) == 0xE0)
+    {
+        // 3 bytes : 1110 xxxx
+        *totalBytesRead = 3;
+        return ((c & 0x0F) << 12) | ((*(ptr + 1) & 0x3F) << 6) | (*(ptr + 2) & 0x3F);
+    }
+    if ((c & 0xF8) == 0xF0)
+    {
+        // 4 bytes : 1111 0xxx
+        *totalBytesRead = 4;
+        return ((c & 0x07) << 18) | ((*(ptr + 1) & 0x3F) << 12) | ((*(ptr + 2) & 0x3F) << 6) | (*(ptr + 3) & 0x3F);
+    }
+    return 0;
+}
+
+void processChunk1(chunkInfo chunk)
 {
     int totalRead = 0, in_word = 0;
     int vowels_counter = 0, consonant_counter = 0, total_words = 0;
@@ -263,6 +296,33 @@ void processChunk(chunkInfo chunk)
 }
 
 // TODO: fazer lógica de processamento do chunk
-void processChunk(char* chunk, int chunkLenght, int* vowel, int* consonat, int* words){
+void processChunk2(int* chunk, int chunkLenght, int* vowel, int* consonat, int* words){
+
+    /*
+    last = current
+    current next utf-8 character
+    do verifications, like if it was a file, just change EOF for '\0'
+    */
+
+    int current, before;
+    int inWord = 0, indx = 0, readdenBytes = 0;
+    int* chunkPtr = chunk;
+    printf("\nProcessei :D\n");
+
+    while(indx < 200){
+        before = current;
+        current = getchar_wrapper2(current, &readdenBytes, indx);
+        indx += readdenBytes;
+
+    }
+
+    for(int i = 0; i < chunkLenght; i++)
+    {
+        before = current;
+        current = (chunk + i);
+
+
+
+    }
 
 }

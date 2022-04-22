@@ -89,7 +89,6 @@ int processInput (int argc, char *argv[], int* thread_amount, int* file_amount, 
        return EXIT_FAILURE;
      }
 
-  int o;                                          /* counting variable */
 
   // printf ("File name = %s\n", fName);
   printf("File names:\n");
@@ -98,7 +97,7 @@ int processInput (int argc, char *argv[], int* thread_amount, int* file_amount, 
     printf("\tfile: <%s>\n", nome);
   }
   printf ("Numeric value = %d\n", *thread_amount);
-  // for (o = 0; o < argc; o++)
+  // for (int o = 0; o < argc; o++)
   //   printf ("Word %d = %s\n", o, argv[o]);
 
   /* that's all */
