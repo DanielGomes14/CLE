@@ -261,3 +261,8 @@ void processChunk(chunkInfo chunk)
     chunk.matrixPtr[chunk.fileId][1] += vowels_counter;
     chunk.matrixPtr[chunk.fileId][2] += total_words;
 }
+
+// TODO: fazer lógica de processamento do chunk
+void processChunk(char* chunk, int chunkLenght, int* vowel, int* consonat, int* words){
+
+}

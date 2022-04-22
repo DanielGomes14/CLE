@@ -18,5 +18,6 @@ void processChunk(chunkInfo chunk);
 
 int getchar_wrapper(FILE *fp, int* totalBytesRead);
 
+void processChunk(char* chunk, int chunkLenght, int* vowel, int* consonat, int* words);
 
 #endif

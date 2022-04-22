@@ -20,9 +20,13 @@ int statusProd[1];
 int stillProcessing;
 
 /** \brief producer life cycle routine */
-static void *producer(void *id);
+static void *produce(void *id);
 /** \brief worker life cycle routine */
 static void *work(void *id);
+
+int threadAmount = 0;   // number of threads;
+int fileAmount = 0;     // amount of files
+char **fileNames;       // pointer to name of files
 
 /** \brief function used to produce chunks */
 void produceChunks(char ***fileNames, int fileAmount, int ***results);
@@ -43,19 +47,19 @@ void produceChunks(char ***fileNames, int fileAmount, int ***results);
 int main(int argc, char *argv[])
 {
 
-    int threadAmount = 0; // number of threads;
-    int fileAmount = 0;   // amount of files
+    // int threadAmount = 0; // number of threads;
+    // int fileAmount = 0;   // amount of files
     int *status_p;        // pointer to execution status
-    char **fileNames;     // array with the names of the files
+    // char **fileNames;     // array with the names of the files
 
     stillProcessing = 1;
 
-    // no inputs where given
-    if (argc == 1)
-    {
-        perror("No arguments were provided.");
-        exit(-1);
-    }
+    // // no inputs where given
+    // if (argc <= 3)
+    // {
+    //     perror("No/few arguments were provided.");
+    //     exit(-1);
+    // }
 
     // processes command line information
     if (processInput(argc, argv, &threadAmount, &fileAmount, &fileNames))
@@ -88,7 +92,8 @@ int main(int argc, char *argv[])
     args.fileNames = &fileNames;
     args.results = &results;
 
-    if (pthread_create(&tIdProd[0], NULL, producer, (void *)&args) != 0) /* thread producer */
+    // create threads
+    if (pthread_create(&tIdProd[0], NULL, produce, (void *)&args) != 0) /* thread producer */
     {
         perror("error on creating thread producer");
         exit(EXIT_FAILURE);
@@ -96,13 +101,26 @@ int main(int argc, char *argv[])
 
     for (int t = 0; t < threadAmount; t++)
     {
+        workerData data;
+        data.threadId = t;
+        data.results = (int*)results;
+
         // create(t)
-        if (pthread_create(&tIdWorker[t], NULL, work, (void *)&workers[t]) != 0) /* thread consumer */
+        if (pthread_create(&tIdWorker[t], NULL, work, (void *)&data) != 0) /* thread consumer */
         {
             perror("error on creating thread worker");
             exit(EXIT_FAILURE);
         }
     }
+
+    // await for threads to finish
+    if (pthread_join(tIdProd[0], (void *)&status_p) != 0) /* thread producer */
+    {
+        perror("error on waiting for thread producer");
+        exit(EXIT_FAILURE);
+    }
+    printf("thread producer, with id %u, has terminated: ", 0);
+    printf("its status was %d\n", *status_p);
 
     for (int t = 0; t < threadAmount; t++)
     {
@@ -116,13 +134,6 @@ int main(int argc, char *argv[])
         printf("its status was %d\n", *status_p);
     }
 
-    if (pthread_join(tIdProd[0], (void *)&status_p) != 0) /* thread producer */
-    {
-        perror("error on waiting for thread producer");
-        exit(EXIT_FAILURE);
-    }
-    printf("thread producer, with id %u, has terminated: ", 0);
-    printf("its status was %d\n", *status_p);
 
     return 0;
 }
@@ -190,11 +201,17 @@ void produceChunks(char ***fileNames, int fileAmount, int ***results)
     }
 }
 
-static void *producer(void *par)
+static void *produce(void *par)
 {
     unsigned int id = *((unsigned int *)par); /* producer id */
-    printf("\nteste");
-    //  produceChunks(&fileNames, fileAmount, &results);
+    
+    /*
+    get worker id
+    for file
+        for chunk
+            send chunk to fifo(chunk is a char[])
+    update processingFlag
+    */
 
     // stillProcessing = 0; // update flag
     statusProd[id] = EXIT_SUCCESS;
@@ -209,40 +226,30 @@ static void *producer(void *par)
  */
 static void *work(void *par)
 {
+
     /*
     get worker id
     get pointer to result matrix
-    while(files exist to be processed)
-        while(fifoEmpty)
-            await
-        get chunkInfo
-        process chunkInfo
-        start mutex
-            save results in result matrix
-        end mutex
+    enter read mutex
+        if FILE* == NULL
+            open next file
+        get chunk from next file(store it on a char[])
+        if EOF
+            update nextFileId(++)
+    exit read mutex
+    process readden chunk
+    enter write results mutex
+        save results on result matrix
+    exit write results mutex
     */
 
-    // TODO: call worker functions
-    // TODO: make initial verification to check if main is still creating chunks
+   // get worker id
+   workerData* data = (workerData*) par;
+   unsigned int id = data->threadId;
+   int** results = data->results;
 
-    // get thread id
-    unsigned int id = *((unsigned int *)par); // worker id //
-
-    while (1)
-    {
-        // get chunk
-        chunkInfo chunk = getChunk(id);
-
-        // no more chunks to be processed
-        if (chunk.bufferSize == -1)
-        {
-            statusWorkers[id] = EXIT_SUCCESS;
-            pthread_exit(&statusWorkers[id]);
-        }
-
-        // count words
-        processChunk(chunk);
-    }
+    // starts processing chunks
+    processChunks(id, &results);
 
     // end work
     statusWorkers[id] = EXIT_SUCCESS;

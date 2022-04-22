@@ -22,10 +22,14 @@ int processInput (int argc, char *argv[], int* thread_amount, int* file_amount, 
 {
   /* process command line options */
 
-  int opt;                                       /* selected option */
-  
-  // int file_amount = 0;
   char** aux_file_names = NULL; 
+  int opt;    // selected option
+
+  if(argc <= 3){
+    perror("No/few arguments were provided.");
+    printUsage(basename("PROGRAM"));
+    return EXIT_FAILURE;
+  }
 
   opterr = 0;
   do
@@ -94,8 +98,8 @@ int processInput (int argc, char *argv[], int* thread_amount, int* file_amount, 
     printf("\tfile: <%s>\n", nome);
   }
   printf ("Numeric value = %d\n", *thread_amount);
-  for (o = 0; o < argc; o++)
-    printf ("Word %d = %s\n", o, argv[o]);
+  // for (o = 0; o < argc; o++)
+  //   printf ("Word %d = %s\n", o, argv[o]);
 
   /* that's all */
 

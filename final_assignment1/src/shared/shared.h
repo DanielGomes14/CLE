@@ -13,6 +13,11 @@ typedef struct threadData{
    int **results;
 } threadData, *pthreadData;
 
+typedef struct workerData{
+    unsigned int threadId;
+    int* results;
+} workerData, pworkerData;
+
 typedef struct chunkInfo{
     FILE* f;
     int bufferSize;

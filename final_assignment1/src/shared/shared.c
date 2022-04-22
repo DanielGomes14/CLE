@@ -22,6 +22,9 @@ extern int threadAmount;
 /** \brief Amount of files*/
 extern int fileAmount;
 
+/** \brief pointer to array of pointers, each pointer points to the name of a file*/
+extern char **fileNames;
+
 /** \brief storage region*/
 static chunkInfo mem[2];
 
@@ -36,6 +39,9 @@ static pthread_cond_t fifoFull, fifoEmpty;
 
 /** \brief locking flag which warrants mutual exclusion inside the monitor */
 static pthread_mutex_t accessCR = PTHREAD_MUTEX_INITIALIZER;
+
+/** \brief locking flag to warrant mutual exclusion when writing results*/
+static pthread_mutex_t accessWR = PTHREAD_MUTEX_INITIALIZER;
 
 /** \brief flag which warrants that the data transfer region is initialized exactly once */
 static pthread_once_t init = PTHREAD_ONCE_INIT;
@@ -52,8 +58,12 @@ static void initialization() {
     pthread_cond_init(&fifoFull, NULL);
     pthread_cond_init(&fifoEmpty, NULL);
 }
+
 /**
- **/
+ * @brief Stores chunk in shared region
+ * The information is saved in a FIFO so it can be obtained in order by the worker threads.
+ * @param info chunk info
+ */
 void storeChunk(chunkInfo info)
 {
 
@@ -98,6 +108,12 @@ void storeChunk(chunkInfo info)
 
 }
 
+/**
+ * @brief Get the Chunk object
+ * Get the next chunk from the FIFO.
+ * @param workerId Id of worker thread
+ * @return chunkInfo 
+ */
 chunkInfo getChunk(unsigned int workerId) {
 
     chunkInfo info;
@@ -153,4 +169,117 @@ chunkInfo getChunk(unsigned int workerId) {
      }
 
     return info;
+}
+
+
+// void showFileNames(){
+//     printf("NOMES DOS FICHEIROS:\n");
+//     for(int i = 0; i < fileAmount; i++){
+//         printf("\t%s\n", fileNames[i]);
+//     }
+// }
+
+int currentFileId = 0;
+FILE* f = NULL;
+
+void processChunks(unsigned int workerId, int*** results){
+    /*
+    get worker id
+    get pointer to result matrix
+    enter read mutex
+        if FILE* == NULL
+            open file
+        get chunk from next file(store it on a char[])
+        if EOF
+            update nextFileId(++)
+    exit read mutex
+    process readden chunk
+    enter write results mutex
+        save results on result matrix
+    exit write results mutex
+    */
+   while(currentFileId < fileAmount){
+    int chunk[200] = {0};    // struct to save chunk
+    int aux;                 // aux variable
+    int chunkLenght = 0;
+    int chunkFileId = 0;
+
+        // enter read mutex
+    if ((statusWorkers[workerId] = pthread_mutex_lock (&accessCR)) != 0)                                   /* enter monitor */
+        { 
+            errno = statusWorkers[workerId];                                                            /* save error in errno */
+            perror ("error on entering monitor(CF)");
+            statusWorkers[workerId] = EXIT_FAILURE;
+            pthread_exit (&statusWorkers[workerId]);
+        }
+        
+        // open file(or next file)
+        if(!f)
+        {
+            f = fopen(fileNames[currentFileId], "r");
+            chunkFileId = currentFileId;
+            if(!f)
+            {
+                perror("Error opening file.");
+                statusWorkers[workerId] = EXIT_FAILURE;
+                pthread_exit (&statusWorkers[workerId]);
+            }
+        }
+
+        // read chunk from file
+        while(1)
+        {
+            aux = fgetc(f);
+
+            if(chunkLenght == 200)      // max chunk lenght
+                break;
+            else if(aux == EOF)  // end of file
+            {
+                fclose(f);
+                currentFileId++;
+                break;
+            }
+
+            chunk[chunkLenght++] = aux;
+        }
+
+        // exit read mutex
+        if ((statusWorkers[workerId] = pthread_mutex_unlock (&accessCR)) != 0)                                   /* exit monitor */
+        { 
+            errno = statusWorkers[workerId];                                                             /* save error in errno */
+            perror ("error on exiting monitor(CF)");
+            statusWorkers[workerId] = EXIT_FAILURE;
+            pthread_exit (&statusWorkers[workerId]);
+        }
+
+        int partialVowel = 0, partialConsonat = 0, partialWords = 0;
+        processChunk(chunk, chunkLenght, &partialVowel, &partialConsonat, &partialWords);
+
+        // FIXME: n sei se o mutex aqui é necessário
+        // enter write results mutex
+        if((statusWorkers[workerId] = pthread_mutex_lock(&accessWR)) != 0){
+            errno = statusWorkers[workerId];                                                            /* save error in errno */
+            perror ("Error on entering mutex to write.");
+            statusWorkers[workerId] = EXIT_FAILURE;
+            pthread_exit (&statusWorkers[workerId]);
+        }
+
+        // write result
+        *(results + (3 * chunkFileId) + 0) += partialVowel;
+        *(results + (3 * chunkFileId) + 1) += partialConsonat;
+        *(results + (3 * chunkFileId) + 2) += partialWords;
+
+        // exit write results mutex
+        if ((statusWorkers[workerId] = pthread_mutex_unlock (&accessWR)) != 0)                                   /* exit monitor */
+        { 
+            errno = statusWorkers[workerId];                                                             /* save error in errno */
+            perror ("error on exiting monitor(CF)");
+            statusWorkers[workerId] = EXIT_FAILURE;
+            pthread_exit (&statusWorkers[workerId]);
+        }
+
+   }
+
+    statusWorkers[workerId] = EXIT_SUCCESS;
+    pthread_exit(&statusWorkers[workerId]);
 }
