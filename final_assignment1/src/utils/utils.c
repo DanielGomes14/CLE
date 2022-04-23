@@ -175,36 +175,41 @@ int getchar_wrapper(FILE *fp, int *totalBytesRead)
     return 0;
 }
 
-int getchar_wrapper2(int* ptr, int *totalBytesRead, int indx)
+int getchar_wrapper2(int* ptr, int *readdenBytes)
 {
-    int c = *ptr;
+    int c = *(ptr + (*readdenBytes));
 
     if (c == EOF)
-        return EOF;
-    if ((c & 0x80) == 0)
     {
-        // 1 byte :  0xxx xxxx
-        *totalBytesRead = 1;
+        // printf("\tEOF\n");
+        *readdenBytes += 1;
+        return EOF;
+    }
+
+    if ((c & 0x80) == 0)        // 1 byte : 0xxx xxxx
+    {
+        *readdenBytes += 1;
         return c;
     }
-    if (((c & 0xE0) == 0xC0) && (indx + 1 <= 200))
+
+    if (((c & 0xE0) == 0xC0))   // 2 bytes : 110x xxxx
     {
-        // 2 bytes : 110x xxxx
-        *totalBytesRead = 2;
-        return ((c & 0x1F) << 6) | (*(ptr +1) & 0x3F);
+        *readdenBytes += 2;
+        return ((c & 0x1F) << 6) | (*(ptr + 1) & 0x3F);
     }
-    if ((c & 0xF0) == 0xE0)
+
+    if ((c & 0xF0) == 0xE0)     // 3 bytes : 1110 xxxx
     {
-        // 3 bytes : 1110 xxxx
-        *totalBytesRead = 3;
+        *readdenBytes += 3;
         return ((c & 0x0F) << 12) | ((*(ptr + 1) & 0x3F) << 6) | (*(ptr + 2) & 0x3F);
     }
-    if ((c & 0xF8) == 0xF0)
+
+    if ((c & 0xF8) == 0xF0)     // 4 bytes : 1111 0xxx
     {
-        // 4 bytes : 1111 0xxx
-        *totalBytesRead = 4;
+        *readdenBytes += 4;
         return ((c & 0x07) << 18) | ((*(ptr + 1) & 0x3F) << 12) | ((*(ptr + 2) & 0x3F) << 6) | (*(ptr + 3) & 0x3F);
     }
+
     return 0;
 }
 
@@ -296,32 +301,67 @@ void processChunk1(chunkInfo chunk)
 }
 
 // TODO: fazer lógica de processamento do chunk
-void processChunk2(int* chunk, int chunkLenght, int* vowel, int* consonat, int* words){
+void processChunk2(int* chunk, int chunkLenght, int* vowel, int* consonant, int* words){
 
-    /*
-    last = current
-    current next utf-8 character
-    do verifications, like if it was a file, just change EOF for '\0'
-    */
-
-    int current, before;
+    int current = 0, lastCharConsonant;
     int inWord = 0, indx = 0, readdenBytes = 0;
-    int* chunkPtr = chunk;
-    printf("\nProcessei :D\n");
 
-    while(indx < 200){
-        before = current;
-        current = getchar_wrapper2(current, &readdenBytes, indx);
-        indx += readdenBytes;
+    // printf("length: <%d>\n", chunkLenght);
 
-    }
-
-    for(int i = 0; i < chunkLenght; i++)
+    int i = 0;
+    int aux = current;
+    while(i <= chunkLenght)
     {
-        before = current;
-        current = (chunk + i);
+        // gets current char
+        // current = getchar_wrapper2(chunk, &readdenBytes);
+        aux = current;
+        current = *(chunk + i++);
 
+        // printf("CURRENT: <%c><%d>\n", current, current);
 
+        if(current == 0 || current == EOF)
+        {
+            // printf("\tREADDEN BYTES: <%d>\n", readdenBytes);
+            break;
+        }
+
+        if(!inWord)
+        {
+            if(isDelimiterChar(current) || isApostrophe(current))
+            {
+                continue;
+            }
+            if(isAlphaNumeric(current) || current == 95)
+            {
+                inWord = 1;
+                (*words)++;
+                if(isVowel(current))
+                    (*vowel)++;
+                lastCharConsonant = isConsonant(current);
+            }
+        }
+
+        if(inWord)
+        {
+            if(isAlphaNumeric(current) || current == 95 || isApostrophe(current))
+            {
+                lastCharConsonant = isConsonant(current);
+                // printf("last char <%c><%d>\n", current, current);
+                continue;
+            }
+            else if(isDelimiterChar(current))
+            {
+                inWord = 0;
+                if(lastCharConsonant)
+                {
+                    // printf("new consonant\n");
+                    printf("AUX <%c><%d>\n", aux, aux);
+                    printf("AUX <%c><%d>\tCONSONANT last char <%c><%d>\n", aux, aux, current, current);
+                    (*consonant)++;
+                }
+            }
+        }
+        
 
     }
 

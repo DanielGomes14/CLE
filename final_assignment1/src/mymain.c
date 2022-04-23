@@ -27,6 +27,9 @@ static void printUsage(char* cmdName);
 /** \brief processes chunks*/
 void processChunks(unsigned int workerId, int* results);
 
+/** \brief Show results*/
+void printResults(int threadAmount, int results[threadAmount][3], char*** fileNames);
+
 int threadAmount = 0;   // number of threads;
 int fileAmount = 0;     // amount of files
 char **fileNames;       // pointer to name of files
@@ -58,7 +61,7 @@ int main(int argc, char *argv[])
 
     // pass reference to the shared structure
     int results[fileAmount][3];     // 3 counters (consonant, vowel and word)
-    memset(results, 0, sizeof(results[3][fileAmount]) * 3 * fileAmount);
+    memset(results, 0, sizeof(results[fileAmount][3]) * 3 * fileAmount);
 
     // initialise workers array
     for (int t_ind = 0; t_ind < threadAmount; t_ind++)
@@ -96,72 +99,11 @@ int main(int argc, char *argv[])
         printf("its status was %d\n", *status_p);
     }
 
+    printResults(fileAmount, results, &fileNames);
 
     return 0;
 }
 
-// main
-//     process cmd
-//     create workers in wait mode
-//     for file
-//         create chunk
-//         signal workers(set flag to true)
-//     signal workers to end(signal flag to false)
-//     espera por workers
-//     end
-
-// void produceChunks(char ***fileNames, int fileAmount, int ***results)
-// {
-//     /*
-//     for file
-//         open file
-//         for chunk in file
-//             dup file pointer
-//             create chunk
-//             put chunk in shared region
-//     */
-//     char **file_names = (*fileNames);
-//     int fileSize = 0;
-//     for (int i = 0; i < fileAmount; i++)
-//     {
-//         char *file_name = file_names[i];
-
-//         FILE *f = fopen(file_name, "r");
-//         if (!f)
-//         {
-//             perror("Error opening file.");
-//             exit(-1);
-//         }
-
-//         // calculate quantity of chunks
-//         // move original pointer
-//         fseek(f, 0L, SEEK_END); // move to end
-//         fileSize = ftell(f);    // get file size
-//         rewind(f);              // move back to start
-
-//         int chunkQuantity = (fileSize / CHUNK_SIZE) + 1;
-//         int lastChunkSize = fileSize % CHUNK_SIZE;
-
-//         // create chunks
-//         for (int i = 0; i < chunkQuantity; i++)
-//         {
-//             // chunk initialization
-//             chunkInfo chunk;
-//             chunk.f = fdopen(dup(fileno(f)), "r"); // duplicate file pointer
-//             chunk.fileId = i;
-//             chunk.matrixPtr = *results;
-//             // check if it is the last Chunk
-//             chunk.bufferSize = i == chunkQuantity - 1 ? lastChunkSize : CHUNK_SIZE;
-
-//             // put chunk on shared region
-//             storeChunk(chunk);
-
-//             // if there is still chunks for processing
-//             if (i != chunkQuantity - 1)
-//                 fseek(f, 0L, SEEK_SET + ((i + 1) * CHUNK_SIZE));
-//         }
-//     }
-// }
 
 /**
  * @brief Worker Function
@@ -182,4 +124,19 @@ static void *work(void *par)
     // end work
     statusWorkers[id] = EXIT_SUCCESS;
     pthread_exit(&statusWorkers[id]);
+}
+
+
+void printResults(int fileAmount, int results[fileAmount][3], char*** fileNames){
+    char** names = *fileNames;
+    printf("\n---------------------RESULTS---------------------\n");
+    for(int i = 0; i < fileAmount; i++)
+    {
+        printf("File: <%s>\n", (*(names + i)));
+        printf("Consonant: <%d>\n", results[i][0]);
+        printf("Vowel: <%d>\n", results[i][1]);
+        printf("Words: <%d>\n", results[i][2]);
+        printf("\n");
+        
+    }
 }

@@ -69,10 +69,19 @@ void processChunks(unsigned int workerId, int* results){
    //TODO: change chunk dynamic array, size of chunk = [200 + 1] -> 1 = '\0'
    // \0 ajuda depois a obter informação do chunk pra processamento, como se fosse EOF
     while(currentFileId < fileAmount){
-        int chunk[200] = {0};    // struct to save chunk
-        int aux = 0;                 // aux variable
+
         int chunkLenght = 0;
         int chunkFileId = 0;
+        int aux = 0;                 // aux variable
+        int* chunk;
+        chunk = malloc(sizeof(int));
+        if(!chunk)
+        {
+            errno = statusWorkers[workerId];                                                            
+            perror ("error on allocating memory");
+            statusWorkers[workerId] = EXIT_FAILURE;
+            pthread_exit (&statusWorkers[workerId]);
+        }
 
         // no more files to read
         if(currentFileId == fileAmount)
@@ -93,6 +102,13 @@ void processChunks(unsigned int workerId, int* results){
         // no more files to read
         if(currentFileId == fileAmount)
         {
+            if ((statusWorkers[workerId] = pthread_mutex_unlock (&accessCR)) != 0)                                   /* exit monitor */
+            { 
+                errno = statusWorkers[workerId];                                                             /* save error in errno */
+                perror ("error on exiting monitor(CF)");
+                statusWorkers[workerId] = EXIT_FAILURE;
+                pthread_exit (&statusWorkers[workerId]);
+            }
             statusWorkers[workerId] = EXIT_SUCCESS;
             pthread_exit(&statusWorkers[workerId]);
         }
@@ -109,17 +125,24 @@ void processChunks(unsigned int workerId, int* results){
             {
                 perror("error opening file");
                 statusWorkers[workerId] = EXIT_FAILURE;
+                if ((statusWorkers[workerId] = pthread_mutex_unlock (&accessCR)) != 0)                                   /* exit monitor */
+                { 
+                    errno = statusWorkers[workerId];                                                             /* save error in errno */
+                    perror ("error on exiting monitor(CF)");
+                    statusWorkers[workerId] = EXIT_FAILURE;
+                    pthread_exit (&statusWorkers[workerId]);
+                }
                 pthread_exit (&statusWorkers[workerId]);
             }
         }
 
         // read chunk from file
+        // printf("\n'");
         while(1)
         {
-
-            if(chunkLenght >= 200 && aux ==)      // max chunk lenght
+            if(chunkLenght >= 20 && isDelimiterChar(aux))      // max chunk lenght
                 break;
-            else if(aux == EOF)         // end of file
+            else if(aux == EOF)         // end of chunk
             {
                 fclose(f);
                 f = NULL;
@@ -127,9 +150,16 @@ void processChunks(unsigned int workerId, int* results){
                 break;
             }
 
-            aux = fgetc(f);
-            chunk[chunkLenght++] = aux;
+            int readdenBytes = 0;
+            aux = getchar_wrapper(f, &readdenBytes);  // get bytes of a single character and return their code
+            // printf("<%d><%c>\n", aux, aux);
+            chunkLenght++;
+            chunk = realloc(chunk, sizeof(int) * chunkLenght);
+            *(chunk + chunkLenght - 1) = aux;
+            // printf("<%d><%c>\n", *(chunk + chunkLenght -1), *(chunk + chunkLenght -1));
+            // printf("%c", *(chunk + chunkLenght -1), *(chunk + chunkLenght -1));
         }
+        // printf("'\n");
 
         // exit read mutex
         if ((statusWorkers[workerId] = pthread_mutex_unlock (&accessCR)) != 0)                                   /* exit monitor */
@@ -141,8 +171,8 @@ void processChunks(unsigned int workerId, int* results){
         }
 
         // processes chunk
-        int partialVowel = 0, partialConsonat = 0, partialWords = 0;
-        processChunk2((int*)chunk, chunkLenght, &partialVowel, &partialConsonat, &partialWords);
+        int partialVowel = 0, partialConsonant = 0, partialWords = 0;
+        processChunk2((int*)chunk, chunkLenght, &partialVowel, &partialConsonant, &partialWords);
 
         // enter write results mutex
         if((statusWorkers[workerId] = pthread_mutex_lock(&accessWR)) != 0){
@@ -153,25 +183,14 @@ void processChunks(unsigned int workerId, int* results){
         }
 
         // write and show results
-        printf("CHUNK FILE ID: <%d>\n", chunkFileId);
-        printf("WORKER ID: <%d>\n", statusWorkers[workerId]);
+        *(results + (3 * chunkFileId) + 0) += partialVowel;
+        *(results + (3 * chunkFileId) + 1) += partialConsonant;
+        *(results + (3 * chunkFileId) + 2) += partialWords;
 
-        printf("VOWEL: <%d>", *(results + (3 * chunkFileId) + 0));
-        *(results + (3 * chunkFileId) + 0) += 1;
-        printf("\t<%d>\n", *(results + (3 * chunkFileId) + 0));
-
-        printf("CONSONANT: <%d>", *(results + (3 * chunkFileId) + 1));
-        *(results + (3 * chunkFileId) + 1) += 1;
-        printf("\t<%d>\n", *(results + (3 * chunkFileId) + 1));
-
-        printf("WORDS: <%d>", *(results + (3 * chunkFileId) + 2));
-        *(results + (3 * chunkFileId) + 2) += 1;
-        printf("\t<%d>\n", *(results + (3 * chunkFileId) + 2));
 
         // exit write results mutex
         if ((statusWorkers[workerId] = pthread_mutex_unlock (&accessWR)) != 0)                                   /* exit monitor */
         { 
-            printf("here...\n");
             errno = statusWorkers[workerId];                                                             /* save error in errno */
             perror ("error on exiting monitor(CF)");
             statusWorkers[workerId] = EXIT_FAILURE;
