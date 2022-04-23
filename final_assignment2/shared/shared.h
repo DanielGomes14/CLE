@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 
-#define CHUNK_SIZE 200
+#define FIFO_SIZE 5
 
 typedef struct chunkInfo{
     int fileId;

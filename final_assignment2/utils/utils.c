@@ -1,15 +1,15 @@
 #include <math.h>
 #include <stdio.h>
+#include "utils.h"
 /**
  * @brief Calculates the determinant of a square matrix using Gaussian Elimination
  * 
  * @param order the order of a determinant
- * @param matrix the matrix with size of "order"
- * @return double 
+ * @param matrix the matrix of 1 Dimension with the length of "order" * "order"
+ * @return double the determinant value
  */
 double determinant(int order,  double * matrix)
 {
-    //printf("%f\n",matrix[0]);
 
     double det = 1;
     double pivotElement;

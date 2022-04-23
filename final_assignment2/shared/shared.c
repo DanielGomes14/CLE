@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include <errno.h>
 
-/** \brief flag */
+/** \brief flag used to check if there are chunks still being produced */
 extern int stillProcessing;
 
 /** \brief  Worker threads return status array*/
@@ -20,7 +20,7 @@ extern int fileAmount;
 /** \brief Data Structure where results will be stored **/
 extern double **results;
 /** \brief storage region*/
-static chunkInfo mem[5];
+static chunkInfo mem[FIFO_SIZE];
 
 /** \brief insertion pointer and retrieval pointer*/
 static unsigned int ii, ri;
@@ -50,8 +50,12 @@ static void initialization()
     pthread_cond_init(&fifoFull, NULL);
     pthread_cond_init(&fifoEmpty, NULL);
 }
+
 /**
- **/
+ * @brief Method to used to store a Chunk in the Shared Region's Fifo
+ * 
+ * @param info an object containing the information of the Chunk to be stored
+ */
 void storeChunk(chunkInfo info)
 {
 
@@ -75,10 +79,9 @@ void storeChunk(chunkInfo info)
     }
 
     mem[ii] = info;
-    ii = (ii + 1) % 5;
+    ii = (ii + 1) % FIFO_SIZE;
     full = (ii == ri);
-    if ((pthread_cond_signal(&fifoEmpty)) != 0) /* let a consumer know that a value has been
-                                                                                                         stored */
+    if ((pthread_cond_signal(&fifoEmpty)) != 0) /* let a consumer know that a value has been stored */
     {
 
         perror("error on signaling in fifoEmpty");
@@ -93,7 +96,12 @@ void storeChunk(chunkInfo info)
         pthread_exit(&status);
     }
 }
-
+/**
+ * @brief Get the Chunk object from the Data Transfer Region
+ * 
+ * @param workerId the Id of the worker thread perfoming this action
+ * @return chunkInfo 
+ */
 chunkInfo getChunk(unsigned int workerId)
 {
 
@@ -107,7 +115,7 @@ chunkInfo getChunk(unsigned int workerId)
     }
     pthread_once(&init, initialization); /* internal data initialization */
 
-    while ((ii == ri) && !full && stillProcessing) /* wait if the data transfer region is empty */
+    while ((ii == ri) && !full && stillProcessing) /* wait if the data transfer region is empty  and there are chunks to be stored*/
     {
         if ((statusWorkers[workerId] = pthread_cond_wait(&fifoEmpty, &accessCR)) != 0)
         {
@@ -117,16 +125,17 @@ chunkInfo getChunk(unsigned int workerId)
             pthread_exit(&statusWorkers[workerId]);
         }
     }
+    /* If the data tranfer region is empty and there are no more chunks to be processed*/
     if ((ii == ri) && !full && !stillProcessing)
     {
-        //info = malloc(sizeof(chunkInfo));
-        info.isLastChunk = 1;
+        
+        info.isLastChunk = 1; /* there are no more chunks to process, thus this flag is put to 1*/
         statusWorkers[workerId] = pthread_mutex_unlock(&accessCR);
         return info;
 
     }
     info = mem[ri];
-    ri = (ri + 1) % 5;
+    ri = (ri + 1) % FIFO_SIZE;
     full = false;
     if ((statusWorkers[workerId] = pthread_cond_signal(&fifoFull)) != 0) /* let a producer know that a value has been                                                                                              retrieved */
     {
@@ -147,6 +156,11 @@ chunkInfo getChunk(unsigned int workerId)
     return info;
 }
 
+/**
+ * @brief Method used to signal worker waiting on the @fifoEmpty condition
+ * This method is useful to signal the workers waiting where there are no more chunks
+ *  being produces and can end their lifecycle
+ */
 void awakeWorkers()
 {
     if (pthread_mutex_lock(&accessCR) != 0)
@@ -155,14 +169,12 @@ void awakeWorkers()
         int status = EXIT_FAILURE;
         pthread_exit(&status);
     }
-    printf("broadcasting...\n");
-    stillProcessing = 0; // update flag
+    stillProcessing = 0; // the producer(main) has stopped producing chunks, so this flag must be updated
     if (pthread_cond_broadcast(&fifoEmpty) != 0) {
-        /* let a consumer know that a value has been stored */
+        
         perror("error on broadcast in fifoEmpty");
         exit(1);
     }
-    printf("lixo\n");
     if (pthread_mutex_unlock(&accessCR) != 0)
     {                                           /* exit */
         perror("error on exiting monitor(CF)"); /* save error in errno */
@@ -173,18 +185,7 @@ void awakeWorkers()
 
 void storePartialResults(unsigned int workerId, int fileId, int matrixId, double determinant)
 {
-    // if ((statusWorkers[workerId] = pthread_mutex_lock(&accessCR)) != 0)
-    // {                                            /* enter monitor */
-    //     perror("error on entering monitor(CF)"); /* save error in errno */
-    //     int status = EXIT_FAILURE;
-    //     pthread_exit(&status);
-    // }
+   
     results[fileId][matrixId] = determinant; /* store value */
 
-    // if ((statusWorkers[workerId] = pthread_mutex_unlock(&accessCR)) != 0)
-    // {                                           /* exit */
-    //     perror("error on exiting monitor(CF)"); /* save error in errno */
-    //     int status = EXIT_FAILURE;
-    //     pthread_exit(&status);
-    // }
 }
