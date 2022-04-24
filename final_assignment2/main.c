@@ -188,7 +188,7 @@ static void *work(void *par)
         //calculate the determinant
         determinant_result = determinant(chunk.order, chunk.matrixPtr);
         // stores in the results data structure the result, using the fileId and the matrixId
-        storePartialResults(id, chunk.fileId, chunk.matrixId, determinant_result);
+        storePartialResults(chunk.fileId, chunk.matrixId, determinant_result);
     }
 
     // end work
