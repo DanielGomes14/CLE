@@ -3,32 +3,12 @@
 
 #include <stdio.h>
 
-#define CHUNK_SIZE 200
-
-
-typedef struct threadData{
-   unsigned int  thread_id;
-   int fileAmount;
-   char ***fileNames;
-   int **results;
-} threadData, *pthreadData;
+#define MINIMUM_CHUNK_SIZE 50
 
 typedef struct workerData{
     unsigned int threadId;
     int* results;
 } workerData, pworkerData;
-
-typedef struct chunkInfo{
-    FILE* f;
-    int bufferSize;
-    int fileId;
-    int fileAmount;
-    int** matrixPtr;   // [fileAmount][3]
-} chunkInfo, *pChunkInfo;
-
-void storeChunk(chunkInfo info);
-
-chunkInfo getChunk(unsigned int workerId);
 
 void processChunks(unsigned int workerId, int* results);
 
