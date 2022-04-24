@@ -17,7 +17,7 @@ void storeChunk(chunkInfo info);
 
 chunkInfo getChunk(unsigned int workerId);
 
-void storePartialResults(unsigned int workerId, int fileId, int matrixId, double determinant);
+void storePartialResults(int fileId, int matrixId, double determinant);
 
 void awakeWorkers();
 #endif
