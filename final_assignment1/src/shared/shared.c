@@ -19,7 +19,10 @@ extern int threadAmount;
 extern int fileAmount;
 
 /** \brief pointer to array of pointers, each pointer points to the name of a file*/
-extern char **fileNames;
+extern char** fileNames;
+
+/** \brief pointer to array of pointers, each pointer points to the results of a file*/
+extern int** resultados;
 
 /** \brief locking flag which warrants mutual exclusion inside the monitor */
 static pthread_mutex_t accessCR = PTHREAD_MUTEX_INITIALIZER;
@@ -39,30 +42,11 @@ FILE* f = NULL;
  * Thread that processes files, chunk by chunk.
  * 
  * \param workerId thread id of the worker
- * \param results pointer to results matrix
  */
-void processChunks(unsigned int workerId, int* results){
-    /*
-    while(nextFileId != fileAmount)
-        enter read mutex
-            if FILE* == NULL
-                open file
-                    test file
-                        release read mutex
-            get chunk from next file(store it on a char[])
-                test realloc
-                    release read mutex
-            if EOF
-                update nextFileId(++)
-        exit read mutex
-        process readden chunk
-        enter write results mutex
-            save results on result matrix
-        exit write results mutex
-    */
+void processChunks(unsigned int workerId){
 
-    while(currentFileId < fileAmount){
-
+    while(currentFileId < fileAmount)
+    {
         int chunkLenght = 0;
         int chunkFileId = 0;
         int aux = 0;
@@ -172,10 +156,12 @@ void processChunks(unsigned int workerId, int* results){
         }
 
         // write results
+        *(*(resultados + chunkFileId) + 0) += partialVowel;
+        *(*(resultados + chunkFileId) + 1) += partialConsonant;
+        *(*(resultados + chunkFileId) + 2) += partialWords;
 
-        *(results + (3 * chunkFileId) + 0) += partialVowel;
-        *(results + (3 * chunkFileId) + 1) += partialConsonant;
-        *(results + (3 * chunkFileId) + 2) += partialWords;
+        // free memory
+        free(chunk);
 
         // exit write results mutex
         if ((statusWorkers[workerId] = pthread_mutex_unlock (&accessWR)) != 0)                                  

@@ -3,13 +3,8 @@
 
 #include <stdio.h>
 
-#define MINIMUM_CHUNK_SIZE 50
+#define MINIMUM_CHUNK_SIZE 200
 
-typedef struct workerData{
-    unsigned int threadId;
-    int* results;
-} workerData, pworkerData;
-
-void processChunks(unsigned int workerId, int* results);
+void processChunks(unsigned int workerId);
 
 #endif
