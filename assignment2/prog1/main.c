@@ -13,7 +13,7 @@
 // #include "worker/worker.h"
 #include "cmd/processCommandLine.h"
 
-void dispatcher(char ***fileNames, int fileAmount);
+void dispatcher(char ***fileNames, int fileAmount, int* size);
 
 void worker(int rank);
 
@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
             MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);    // kill EVERY living process (root included)
         }
         else
-            dispatcher(&fileNames, fileAmount);         // dispatcher logic
+            dispatcher(&fileNames, fileAmount, &size);         // dispatcher logic
 
 
         clock_gettime(CLOCK_MONOTONIC_RAW, &finish);    // end counting time
@@ -79,9 +79,107 @@ int main(int argc, char *argv[])
 }
 
 
-void dispatcher(char ***fileNames, int fileAmount)
+void dispatcher(char ***fileNames, int fileAmount, int* size)
 {
     //TODO: do stuff here
+
+    // char** names = *fileNames;
+    // FILE* f = NULL;
+    // int filesToProcess = 1, actualFileID = 0, chunkSize = 0;
+    // int *chunk = NULL;
+
+    /*
+
+    3 códigos de execução
+        0 - nada
+        1 - preparar pra receber e processar chunk
+        2 - devolder resultados parciais
+
+    percorre todos os ficheiros
+        para cada ficheiro vai lendo e enviando chunks para cada worker
+            se final ficheiro
+                 
+
+    for file in files
+
+        chunk2process = true
+
+        while(chunks2process)
+            for worker in workers
+                if chunk2process
+                    chunk2process = read chunk
+                    send 1
+                    send size
+                    send chunk
+                else
+                    send 0
+
+            if !chunks2process
+                for worker in workers
+                    send 2
+                    receive results
+
+    */
+
+    char *names = *fileNames;
+
+    for(int i = 0; i < fileAmount; i++)
+    {
+        FILE* f = fopen(names[i], "r");
+        if(!f)
+        {
+            perror("error openining file\n");
+            MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+        }
+
+        int chunkToProcess = 0;
+        int *chunk = NULL, chunkSize = 0, ;
+        while(chunkToProcess)
+        {
+            for(int j = 1; j < size; j++)
+            {
+                if(chunkToProcess)
+                {
+                    chunk = readChunk(f, &chunkSize, &chunkToProcess);
+                }
+            }
+        }
+
+    }
+
+    while(filesToProcess)
+    {
+        // send chunk cycle
+        for(int i = 1; i < size; i++)
+        {
+            //TODO: implement readChunk
+            chunk = readChunk(fileNames, &actualFileID, f, &filesToProcess, &chunkSize);
+
+            if(filesToProcess)
+            {
+                // send boolean
+                MPI_Send(&filesToProcess, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+                // send chunk size
+                MPI_Send(&chunkSize, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+                // send chunk
+                MPI_Send(chunk, chunkSize, MPI_INT, i, 0, MPI_COMM_WORLD);
+            }
+            else
+            {
+                filesToProcess = 0;
+                fclose(f);
+                break;
+            }
+        }
+
+        // no more files to read
+        if(!filesToProcess)
+            for(int i = 1; i < size; i++)
+            {
+                // send boolean to every worker process
+                MPI_Send(&filesToProcess, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+            }  
+    }
 
     return;
 }
@@ -89,5 +187,27 @@ void dispatcher(char ***fileNames, int fileAmount)
 void worker(int rank)
 {
     //TODO: do stuff here
+    int filesToProcess = 1, chunkSize = 0;
+    int* chunk = NULL;
+
+
+    while(filesToProcess)
+    {
+        // receive boolean
+        MPI_Recv(&filesToProcess, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+        if(!filesToProcess)
+            break;
+
+        // receive chunk size
+        MPI_Recv(&chunkSize, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+        // receive chunk
+        MPI_Recv(chunk, chunkSize, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+
+
+    }
+
     return;
 }
