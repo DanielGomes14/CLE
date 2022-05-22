@@ -85,11 +85,11 @@ void dispatcher(char ***fileNames, int fileAmount)
     double **results = malloc(fileAmount * sizeof(double *));
     matrixAmount = malloc(fileAmount * sizeof(int));
     char **file_names = (*fileNames);
-    int amount = 0, order = 0, chunkQuantity = 0, lastChunkSize = 0;
+    int amount = 0, order = 0, lastChunkSize = 0;
     int matrixId = 0, fileId = 0, chunkId = 0;
     int chunksToSend;
 
-    FILE *f;
+    FILE *f = NULL;
 
     while (whatToDo)
     {
@@ -133,7 +133,7 @@ void dispatcher(char ***fileNames, int fileAmount)
                 printf("Error reading order. Exiting...");
                 exit(-1);
             }
-            chunkQuantity = (int)(matrixAmount[fileId] / (nWorkers));
+            //chunkQuantity = (int)(matrixAmount[fileId] / (nWorkers));
             lastChunkSize = matrixAmount[fileId] % (nWorkers);
         }
         chunksToSend = chunkId == (matrixAmount[fileId] - lastChunkSize) ? lastChunkSize : (nWorkers);
@@ -172,11 +172,12 @@ void dispatcher(char ***fileNames, int fileAmount)
         if (chunkId == matrixAmount[fileId])
         {
             fclose(f);
+            f = NULL;
             fileId++;
         }
     }
     printResults(results, fileAmount);
-}
+} 
 
 void work(int rank)
 {
