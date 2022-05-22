@@ -94,6 +94,7 @@ void dispatcher(char ***fileNames, int fileAmount, int* size)
         0 - nada
         1 - preparar pra receber e processar chunk
         2 - devolder resultados parciais
+        3 - finish everything
 
     percorre todos os ficheiros
         para cada ficheiro vai lendo e enviando chunks para cada worker
@@ -122,6 +123,7 @@ void dispatcher(char ***fileNames, int fileAmount, int* size)
     */
 
     char *names = *fileNames;
+    int nothingCode = 0, processCode = 1, returnCode = 2;
 
     for(int i = 0; i < fileAmount; i++)
     {
@@ -132,61 +134,74 @@ void dispatcher(char ***fileNames, int fileAmount, int* size)
             MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
         }
 
-        int chunkToProcess = 0;
-        int *chunk = NULL, chunkSize = 0, ;
+        int chunkToProcess = 1;
+        int *chunk = NULL, chunkSize = 0;
         while(chunkToProcess)
         {
-            for(int j = 1; j < size; j++)
+            for(int j = 1; j < size; j++)       // cycle to send chunks of a file
             {
-                if(chunkToProcess)
+                if(chunkToProcess)              // chunks to process
                 {
                     chunk = readChunk(f, &chunkSize, &chunkToProcess);
+                    MPI_Send(&processCode, 1, MPI_INT, j, 0, MPI_COMM_WORLD);
+                    MPI_Send(&chunkSize, 1, MPI_INT, j, 0, MPI_COMM_WORLD);
+                    MPI_Send(chunk, chunkSize, MPI_INT, j, 0, MPI_COMM_WORLD);
+                }
+                else                            // no more chunks, but is still iteraating through workers
+                {
+                    MPI_Send(&nothingCode, 1, MPI_INT, j, 0, MPI_COMM_WORLD);
                 }
             }
+
+            if(!chunkToProcess)                 // no more chunks to process, send msg to workers to return partial values
+            {
+                for(int j = 1; j < size; j++)
+                {
+                    /*
+                    TODO: 
+                        create struc to save results
+                        send msg
+                        receive results
+                        save results on results struct
+                    */
+                    MPI_Send(&returnCode, 1, MPI_INT, j, 0, MPI_COMM_WORLD);
+                    MPI_Recv(/*pointer to struct*/, sizeof(/*struct*/), MPI_Type_struct, j, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                }
+            }
+
         }
 
     }
 
-    while(filesToProcess)
-    {
-        // send chunk cycle
-        for(int i = 1; i < size; i++)
-        {
-            //TODO: implement readChunk
-            chunk = readChunk(fileNames, &actualFileID, f, &filesToProcess, &chunkSize);
-
-            if(filesToProcess)
-            {
-                // send boolean
-                MPI_Send(&filesToProcess, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
-                // send chunk size
-                MPI_Send(&chunkSize, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
-                // send chunk
-                MPI_Send(chunk, chunkSize, MPI_INT, i, 0, MPI_COMM_WORLD);
-            }
-            else
-            {
-                filesToProcess = 0;
-                fclose(f);
-                break;
-            }
-        }
-
-        // no more files to read
-        if(!filesToProcess)
-            for(int i = 1; i < size; i++)
-            {
-                // send boolean to every worker process
-                MPI_Send(&filesToProcess, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
-            }  
-    }
+    int endCode = 3;
+    for(int i = 1; i < size; i++)
+        MPI_Send(&endCode, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
 
     return;
 }
 
 void worker(int rank)
 {
-    //TODO: do stuff here
+    /*
+        TODO:
+        while(1)
+            recv code
+            switch
+                0
+                    continue
+                1
+                    recv chunk size
+                    recv chunk
+                    process chunk
+                    save partial results
+                2
+                    send partial results
+                    reset counters
+                3
+                    break
+    */
+
+    // EVERYTHING BELOW HERE IS ONLY OCCUPYING SPACE...
     int filesToProcess = 1, chunkSize = 0;
     int* chunk = NULL;
 
