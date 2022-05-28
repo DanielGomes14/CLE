@@ -1,68 +1,129 @@
-#include <math.h>
-#include <stdio.h>
 #include "worker.h"
-/**
- * @brief Calculates the determinant of a square matrix using Gaussian Elimination
- * 
- * @param order the order of a determinant
- * @param matrix the matrix of 1 Dimension with the length of "order" * "order"
- * @return double the determinant value
- */
-double determinant(int order,  double * matrix)
-{
 
-    double det = 1;
-    double pivotElement;
-    int pivotRow;
-    for (int i = 0; i < order; ++i)
+void chunkProcessing(int* chunk, int chunkLenght, int* vowel, int* consonant, int* words){
+
+    int current = 0, lastCharConsonant;
+    int inWord = 0;
+
+    int i = 0;
+    while(i < chunkLenght)
     {
+        // gets current char
+        current = *(chunk + i++);
 
-        pivotElement = matrix[ (i * order) + i]; // current diagonal element
-        pivotRow = i;
-        // partial pivoting, which should select
-        // the entry with largest absolute value from the column of the matrix
-        // that is currently being considered as the pivot element
-        for (int row = i + 1; row < order; ++row)
+        if(current == 0 || current == EOF)
+            break;
+
+        if(!inWord)
         {
-            if (fabs(matrix[(row * order) + i]) > fabs(pivotElement))
+            if(isDelimiterChar(current) || isApostrophe(current))
+                continue;
+
+            if(isAlphaNumeric(current) || current == 95)
             {
-                // update the value of the pivot and pivot row index
-                pivotElement = matrix[(row * order) + i];
-                pivotRow = row;
+                inWord = 1;
+                (*words)++;
+                if(isVowel(current))
+                    (*vowel)++;
+                lastCharConsonant = isConsonant(current);
             }
         }
-        //if the diagonal element is zero then the determinant will be zeero
-        if (pivotElement == 0.0)
-        {
-            return 0.0;
-        }
 
-        if (pivotRow != i) // if the pivotELement is not in the current row, then we perform a swap in the columns
+        if(inWord)
         {
-            for (int k = 0; k < order; k++)
+            if(isAlphaNumeric(current) || current == 95 || isApostrophe(current))
             {
-                double temp;
-                temp = matrix[(i * order) + k];
-                matrix[(i * order) + k] = matrix[(pivotRow * order) + k];
-                matrix[(pivotRow * order) + k] = temp;
+                lastCharConsonant = isConsonant(current);
+                continue;
             }
-
-            det *= -1.0; //signal the row swapping
-        }
-
-        det *= pivotElement; //update the determinant with the the diagonal value of the current row
-
-        for (int row = i + 1; row < order; ++row) /* reduce the matrix to a  Upper Triangle Matrix */
-        // as the current row and column "i" will no longer be used, we may start reducing on the next
-        // row/column (i+1)
-        {
-            for (int col = i + 1; col < order; ++col)
+            else if(isDelimiterChar(current))
             {
-                                
-                matrix[(row * order) + col] -= matrix[(row * order) + i] * matrix[(i * order) + col] / pivotElement;  //reduce the value
+                inWord = 0;
+                if(lastCharConsonant)
+                    (*consonant)++;
             }
         }
     }
+}
 
-    return det;
+void worker(int rank)
+{
+    /*
+        while(1)
+            recv code
+            if  0
+                    continue
+            if  1
+                    recv chunk size
+                    recv chunk
+                    process chunk
+                    save partial results
+            if  2
+                    send partial results
+                    reset counters
+            if  3
+                    break
+    */
+
+    int *chunk = NULL, *counters = NULL;
+    int executionCode = 1, chunkSize = 0;
+
+    counters = malloc(sizeof(int) * 3); // words, vowels, consonants
+    if(!counters)
+    {
+        perror("error allocating memory for counters");
+        MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+    }
+    for(int i = 0; i < 3; i++)
+        *(counters + i) = 0;
+
+    while(1)
+    {
+        // receive boolean
+        MPI_Recv(&executionCode, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+        if(executionCode == 0)          // idle
+        {
+            continue;
+        }
+        else if(executionCode == 1)     // recv chunk size and chunk and process chunk
+        {
+            // recv chunk size
+            MPI_Recv(&chunkSize, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+            // recv chunk
+            chunk = malloc(sizeof(int) * chunkSize);
+            for(int i = 0; i < chunkSize; i++)
+                *(chunk + i) = '\0';
+            MPI_Recv(chunk, chunkSize, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+            // process chunk
+            chunkProcessing(chunk, chunkSize, counters, counters + 1, counters + 2);
+
+            printf("\nVOWELS: <%d>\n", *counters);
+            printf("CONSONANTS: <%d>\n", *(counters + 1));
+            printf("WORDS: <%d>\n", *(counters + 2));
+
+            // free processed chunk
+            free(chunk);
+        }
+        else if(executionCode == 2)     // send counters
+        {
+            // send counters
+            MPI_Send(counters, 3, MPI_INT, 0, 0, MPI_COMM_WORLD);
+            
+            // reset counters
+            *(counters + 0) = 0;
+            *(counters + 1) = 0;
+            *(counters + 2) = 0;
+        }
+        else if(executionCode == 3)     // end worker
+        {
+            // CHECK IF IT IS NECESSARY TO FREE MEMORY
+            free(counters);
+            break;
+        }
+    }
+
+    return;
 }

@@ -21,8 +21,6 @@ static void printUsage(char *cmdName);
 int processInput (int argc, char *argv[], int* fileAmount, char*** fileNames)
 {
 
-    return EXIT_FAILURE;
-
     char **auxFileNames = NULL; 
     int opt;    // selected option
 

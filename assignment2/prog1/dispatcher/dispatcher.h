@@ -1,19 +1,19 @@
-#include <stdio.h>
-
 #ifndef DISPATCHER_H
 #define DISPATCHER_H
 
-typedef struct chunkInfo{
-    int fileId;
-    int matrixId;
-    double* matrixPtr; 
-    int order;
-    int isLastChunk;
-} chunkInfo, *pChunkInfo;
+#include <stdlib.h>
+#include <string.h>
+#include <limits.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <stdio.h>
+#include <mpi.h>
+#include "../utils/utils.h"
 
-void storePartialResult(double **results, int fileId, int matrixId, double determinant);
+#define MIN_CHUNK_SIZE 200
 
+int *readChunk(FILE **f, int *chunkSize, int *chunkToProcess);
 
-void printResults(double **results,int fileAmount);
+void dispatcher(char ***fileNames, int fileAmount, int size, int* results);
 
 #endif
