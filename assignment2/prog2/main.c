@@ -36,9 +36,11 @@ int main(int argc, char *argv[])
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
     nWorkers = size - 1;
-
+    if (nWorkers <1){
+        printf("Number of Workers Invalid, should be greater than one.\n");
+        MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE); // kill EVERY living process (root included)
+    }
     if (rank == 0) // root process (dispatcher)
     {
         clock_gettime(CLOCK_MONOTONIC_RAW, &start); // start counting time
@@ -115,14 +117,14 @@ void dispatcher(char ***fileNames, int fileAmount)
             if (f == NULL)
             {
                 printf("Could not open file\n");
-                exit(-1);
+                MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE); // kill EVERY living process (root included)
             }
             amount = 0;
             // reads amount of matrices
             if (!fread(&amount, sizeof(int), 1, f))
             {
                 printf("Error reading amount. Exiting...\n");
-                exit(-1);
+                MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE); // kill EVERY living process (root included)
             }
             results[fileId] = malloc(amount * sizeof(double));
             matrixAmount[fileId] = amount;
@@ -131,7 +133,7 @@ void dispatcher(char ***fileNames, int fileAmount)
             if (!fread(&order, sizeof(int), 1, f))
             {
                 printf("Error reading order. Exiting...");
-                exit(-1);
+                MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE); // kill EVERY living process (root included)
             }
             //chunkQuantity = (int)(matrixAmount[fileId] / (nWorkers));
             lastChunkSize = matrixAmount[fileId] % (nWorkers);
@@ -140,6 +142,7 @@ void dispatcher(char ***fileNames, int fileAmount)
         for (int j = 1; j <= nWorkers; j++)
         {
             chunkInfo chunk;
+            // if there's no more chunks, tell worker's that they should not wait for work
             if(matrixAmount[fileId] == chunkId){
                 chunk.isLastChunk=1;
                 MPI_Send(&chunk, sizeof(chunkInfo), MPI_BYTE, j, 0, MPI_COMM_WORLD);
@@ -153,22 +156,25 @@ void dispatcher(char ***fileNames, int fileAmount)
                 matrixId++;
 
             }
+            // send matrix information
             MPI_Send(&chunk, sizeof(chunkInfo), MPI_BYTE, j, 0, MPI_COMM_WORLD);
             double *matrix = (double *)malloc(sizeof(double) * order * order);
             if (!fread(matrix, 8, order * order, f))
                 break;
+            // send matrix
             MPI_Send(matrix, order * order, MPI_DOUBLE, j, 0, MPI_COMM_WORLD);
             chunkId++;
             free(matrix);
         }
 
+        // wait for partial results
         for (workerId = 1; workerId <= chunksToSend; workerId++)
         {
             double partialResultData[3]; /* received partial info computed by workers */
             MPI_Recv(partialResultData, 3, MPI_DOUBLE, workerId, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-            //printf("Received info %f,%f,%f\n", partialResultData[0], partialResultData[1], partialResultData[3]);
-            storePartialResult(results, partialResultData[1], partialResultData[2], partialResultData[0]);
+            storePartialResult(results, partialResultData[1], partialResultData[2], partialResultData[0]); /* store partial results*/
         }
+        // if there are no more matrices in this file, close it
         if (chunkId == matrixAmount[fileId])
         {
             fclose(f);
@@ -197,8 +203,7 @@ void work(int rank)
         }
 
         MPI_Recv(&chunk, sizeof(chunkInfo), MPI_BYTE, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        if(chunk.isLastChunk){
-            printf("Last Chunk..\n");
+        if(chunk.isLastChunk){ /* avoid staying blocked wiating for more work*/
             continue;
         }
         order = chunk.order;
