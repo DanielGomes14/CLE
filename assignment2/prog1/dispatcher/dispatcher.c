@@ -77,35 +77,6 @@ int *readChunk(FILE *fPtr, int *chunkSize, int *chunkToProcess)
  */
 void dispatcher(char ***fileNames, int fileAmount, int size)
 {
-    /*
-
-    3 códigos de execução
-        0 - nada
-        1 - preparar pra receber e processar chunk
-        2 - devolder resultados parciais
-        3 - finish everything                 
-
-    for file in files
-
-        chunk2process = true
-
-        while(chunks2process)
-            for worker in workers
-                if chunk2process
-                    chunk2process = read chunk
-                    send 1
-                    send size
-                    send chunk
-                else
-                    send 0
-
-            if !chunks2process
-                for worker in workers
-                    send 2
-                    receive results
-
-    */
-
     int results[fileAmount][3];
     for(int i = 0; i < fileAmount; i++)
         for(int j = 0; j < 3; j++)

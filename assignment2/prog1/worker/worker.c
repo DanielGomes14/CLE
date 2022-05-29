@@ -69,23 +69,6 @@ void chunkProcessing(int* chunk, int chunkLenght, int* vowel, int* consonant, in
  */
 void worker(int rank)
 {
-    /*
-        while(1)
-            recv code
-            if  0
-                    continue
-            if  1
-                    recv chunk size
-                    recv chunk
-                    process chunk
-                    save partial results
-            if  2
-                    send partial results
-                    reset counters
-            if  3
-                    break
-    */
-
     int *chunk = NULL, *counters = NULL;
     int executionCode = 1, chunkSize = 0;
 
