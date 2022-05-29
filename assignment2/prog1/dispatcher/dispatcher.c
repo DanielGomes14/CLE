@@ -1,21 +1,24 @@
 #include "dispatcher.h"
 
-/** \brief method used to Load Information from Files **/
-void loadFilesInfo();
-/** \brief method used to Store the Partials Results retrieved from workers **/
-void storePartialResult(double **results, int fileId, int matrixId, double determinant);
-/** \brief method used to print the Final Results **/
-void printResults(double **results,int fileAmount);
-
-int *readChunk(FILE **fPtr, int *chunkSize, int *chunkToProcess)
+int *readChunk(FILE *fPtr, int *chunkSize, int *chunkToProcess)
 {
     int readdenBytes = 0, nextChar = 0;
     int *chunk = NULL;
-    FILE * f = *fPtr;
+    // FILE *f = *fPtr;
 
     while(1)
     {
-        nextChar = getchar_wrapper(f, &readdenBytes);
+        // printf("CHUNK\n");
+        if((*chunkSize) >= MIN_CHUNK_SIZE && isDelimiterChar(nextChar))
+            break;
+        else if(nextChar == EOF)
+        {
+            fclose(fPtr);
+            *chunkToProcess = 0;
+            break;        
+        }
+
+        nextChar = getchar_wrapper((fPtr), &readdenBytes);
 
         (*chunkSize) += 1;
 
@@ -39,23 +42,12 @@ int *readChunk(FILE **fPtr, int *chunkSize, int *chunkToProcess)
             }
             *(chunk + ((*chunkSize) - 1)) = nextChar;
         }
-
-        if((*chunkSize) >= MIN_CHUNK_SIZE)
-        {
-            if(isDelimiterChar(nextChar))
-            {
-                if(nextChar == EOF)
-                    (*chunkToProcess) = 0;
-
-                break;
-            }
-        }
     }
 
     return chunk;
 }
 
-void dispatcher(char ***fileNames, int fileAmount, int size, int* results)
+void dispatcher(char ***fileNames, int fileAmount, int size)
 {
     /*
 
@@ -86,12 +78,16 @@ void dispatcher(char ***fileNames, int fileAmount, int size, int* results)
 
     */
 
+    int results[fileAmount][3];
+    for(int i = 0; i < fileAmount; i++)
+        for(int j = 0; j < 3; j++)
+            results[i][j] = 0;
+
     char **names = *fileNames;
     int idleCode = 0, processCode = 1, returnCode = 2, endCode = 3;
 
     for(int i = 0; i < fileAmount; i++)
     {
-
         char* fileName = strdup(names[i]);
         char* dir = strdup("./files/");
         FILE* f = fopen(strcat(dir, fileName), "r");
@@ -109,11 +105,13 @@ void dispatcher(char ***fileNames, int fileAmount, int size, int* results)
             {
                 if(chunkToProcess)              // chunks to process
                 {
-                    chunk = readChunk(&f, &chunkSize, &chunkToProcess);
+                    chunk = readChunk(f, &chunkSize, &chunkToProcess);
+
                     MPI_Send(&processCode, 1, MPI_INT, j, 0, MPI_COMM_WORLD);
                     MPI_Send(&chunkSize, 1, MPI_INT, j, 0, MPI_COMM_WORLD);
                     MPI_Send(chunk, chunkSize, MPI_INT, j, 0, MPI_COMM_WORLD);
                     free(chunk);
+                    chunkSize = 0;
                 }
                 else                            // no more chunks, but is still iterating through workers
                 {
@@ -129,22 +127,24 @@ void dispatcher(char ***fileNames, int fileAmount, int size, int* results)
                     for(int k = 0; k < 3; k++)
                         *(partialResults + k) = 0;
 
+
                     MPI_Send(&returnCode, 1, MPI_INT, j, 0, MPI_COMM_WORLD);
                     MPI_Recv(partialResults, 3, MPI_INT, j, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
-                    printf("FILE <%s> RESULTS:\n", names[i]);
+                    results[i][0] += *(partialResults + 0);
 
-                    *((results + i*3) + 0) += *(partialResults + 0);
-                    printf("Total words: <%d>\n", *(partialResults + 0));
+                    results[i][1] += *(partialResults + 1);
 
-                    *((results + i*3) + 1) += *(partialResults + 1);
-                    printf("Vowels: <%d>\n", *(partialResults + 0));
-
-                    *((results + i*3) + 2) += *(partialResults + 2);
-                    printf("Consonants: <%d>\n", *(partialResults + 0));
+                    results[i][2] += *(partialResults + 2);
 
                     free(partialResults);
                 }
+
+                printf("\nRESULTS\n");
+                printf("FILE <%s> RESULTS:\n", names[i]);
+                printf("Consonants: <%d>\n", results[i][0]);
+                printf("Vowels: <%d>\n", results[i][1]);
+                printf("Words: <%d>\n", results[i][2]);
             }
 
         }

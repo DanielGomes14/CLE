@@ -84,6 +84,7 @@ void worker(int rank)
 
         if(executionCode == 0)          // idle
         {
+            executionCode = -1;
             continue;
         }
         else if(executionCode == 1)     // recv chunk size and chunk and process chunk
@@ -100,12 +101,10 @@ void worker(int rank)
             // process chunk
             chunkProcessing(chunk, chunkSize, counters, counters + 1, counters + 2);
 
-            printf("\nVOWELS: <%d>\n", *counters);
-            printf("CONSONANTS: <%d>\n", *(counters + 1));
-            printf("WORDS: <%d>\n", *(counters + 2));
-
             // free processed chunk
             free(chunk);
+
+            executionCode = -1;
         }
         else if(executionCode == 2)     // send counters
         {
@@ -116,10 +115,11 @@ void worker(int rank)
             *(counters + 0) = 0;
             *(counters + 1) = 0;
             *(counters + 2) = 0;
+
+            executionCode = -1;
         }
         else if(executionCode == 3)     // end worker
         {
-            // CHECK IF IT IS NECESSARY TO FREE MEMORY
             free(counters);
             break;
         }
