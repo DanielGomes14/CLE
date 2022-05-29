@@ -16,7 +16,7 @@
 /**
  * @brief Dispatcher process main logic 
  */
-void dispatcher(char ***fileNames, int fileAmount, int size);
+void dispatcher(char ***fileNames, int fileAmount, int size, int *results);
 
 /**
  * @brief Worker process main logic 
@@ -56,23 +56,34 @@ int main(int argc, char *argv[])
             MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);    // kill EVERY living process (root included)
         }
 
-        dispatcher(&fileNames, fileAmount, size);         // dispatcher logic
+        // allocate memory for results
+        int* results = malloc(sizeof(int) * fileAmount * 3);
+        if(!results)
+        {
+            perror("error alocating memory for results");
+            MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
+        }
+        for(int i = 0; i < fileAmount; i++)
+            for(int j = 0; j < 3; j++)
+                *((results + i * 3) + j) = 0;
+
+        dispatcher(&fileNames, fileAmount, size, results);         // dispatcher logic
 
         clock_gettime(CLOCK_MONOTONIC_RAW, &finish);    // end counting time
 
         // calculate execution time
         float executionTime = (finish.tv_sec - start.tv_sec) / 1.0 + (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
 
-        printf("\nRoot elapsed time = %.6f s\n", executionTime);  // print execution time
+        printf("FINAL RESULTS\n");
+        for(int i = 0; i < fileAmount; i++)
+        {
+            printf("\nFile: <%s>\n", fileNames[i]);
+            printf("CONSONANTS: <%d>\n", *((results + i * 3) + 0));
+            printf("VOWELS: <%d>\n", *((results + i * 3) + 1));
+            printf("WORDS: <%d>\n", *((results + i * 3) + 2));
+        }
 
-        // printf("FINAL RESULTS\n");
-        // for(int i = 0; i < fileAmount; i++)
-        // {
-        //     printf("File: <%s>\n", fileNames[i]);
-        //     printf("VOWELS: <%d>\n", results[i][0]);
-        //     printf("CONSONANTS: <%d>\n", results[i][1]);
-        //     printf("WORDS: <%d>\n", results[i][2]);
-        // }
+        printf("\nRoot elapsed time = %.6f s\n", executionTime);  // print execution time
     }
     else
     {

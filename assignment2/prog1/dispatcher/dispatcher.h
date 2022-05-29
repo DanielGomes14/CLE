@@ -15,6 +15,6 @@
 
 int *readChunk(FILE *f, int *chunkSize, int *chunkToProcess);
 
-void dispatcher(char ***fileNames, int fileAmount, int size);
+void dispatcher(char ***fileNames, int fileAmount, int size, int *results);
 
 #endif

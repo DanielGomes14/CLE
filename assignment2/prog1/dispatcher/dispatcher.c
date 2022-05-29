@@ -74,14 +74,10 @@ int *readChunk(FILE *fPtr, int *chunkSize, int *chunkToProcess)
  * @param fileNames Pointer to the array with the names of the files
  * @param fileAmount Amount of files
  * @param size Amount of processes
+ * @return int* (pointer to results matrix)
  */
-void dispatcher(char ***fileNames, int fileAmount, int size)
+void dispatcher(char ***fileNames, int fileAmount, int size, int *results)
 {
-    int results[fileAmount][3];
-    for(int i = 0; i < fileAmount; i++)
-        for(int j = 0; j < 3; j++)
-            results[i][j] = 0;
-
     char **names = *fileNames;
     int idleCode = 0, processCode = 1, returnCode = 2, endCode = 3;
 
@@ -130,20 +126,14 @@ void dispatcher(char ***fileNames, int fileAmount, int size)
                     MPI_Send(&returnCode, 1, MPI_INT, j, 0, MPI_COMM_WORLD);
                     MPI_Recv(partialResults, 3, MPI_INT, j, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
-                    results[i][0] += *(partialResults + 0);
+                    *((results + i * 3) + 0) += *(partialResults + 0);
 
-                    results[i][1] += *(partialResults + 1);
+                    *((results + i * 3) + 1) += *(partialResults + 1);
 
-                    results[i][2] += *(partialResults + 2);
+                    *((results + i * 3) + 2) += *(partialResults + 2);
 
                     free(partialResults);
                 }
-
-                printf("\nRESULTS\n");
-                printf("FILE <%s> RESULTS:\n", names[i]);
-                printf("Consonants: <%d>\n", results[i][0]);
-                printf("Vowels: <%d>\n", results[i][1]);
-                printf("Words: <%d>\n", results[i][2]);
             }
         }
     }
