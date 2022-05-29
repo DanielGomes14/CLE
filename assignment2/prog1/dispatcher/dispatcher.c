@@ -1,14 +1,22 @@
 #include "dispatcher.h"
 
+/**
+ * @brief Function used to read chunks from a file.
+ * 
+ * The file MUST be opened beforehand.
+ * 
+ * @param fPtr pointer to openend file
+ * @param chunkSize size of the readden chunk 
+ * @param chunkToProcess flag to know if there are more chunks to process
+ * @return int* (returns a pointer to the chunk)
+ */
 int *readChunk(FILE *fPtr, int *chunkSize, int *chunkToProcess)
 {
     int readdenBytes = 0, nextChar = 0;
     int *chunk = NULL;
-    // FILE *f = *fPtr;
 
     while(1)
     {
-        // printf("CHUNK\n");
         if((*chunkSize) >= MIN_CHUNK_SIZE && isDelimiterChar(nextChar))
             break;
         else if(nextChar == EOF)
@@ -18,7 +26,7 @@ int *readChunk(FILE *fPtr, int *chunkSize, int *chunkToProcess)
             break;        
         }
 
-        nextChar = getchar_wrapper((fPtr), &readdenBytes);
+        nextChar = getchar_wrapper(fPtr, &readdenBytes);
 
         (*chunkSize) += 1;
 
@@ -47,6 +55,26 @@ int *readChunk(FILE *fPtr, int *chunkSize, int *chunkToProcess)
     return chunk;
 }
 
+/**
+ * @brief Dispatcher logic
+ * 
+ * Iterates through each file, where each iteration reads a chunk and sends it 
+ * to a worker process to be processed.
+ * 
+ * 4 "execution codes" are used to control the behavior of the Worker, so it can
+ * wait for specified data that the Dispatcher sends:
+ *  0 - idle
+ *  1 - process chunk
+ *  2 - return results
+ *  3 - end process
+ * 
+ * At the end of each file, the results are requested to the worker processes
+ * and summed to be printed.
+ * 
+ * @param fileNames Pointer to the array with the names of the files
+ * @param fileAmount Amount of files
+ * @param size Amount of processes
+ */
 void dispatcher(char ***fileNames, int fileAmount, int size)
 {
     /*
@@ -146,9 +174,7 @@ void dispatcher(char ***fileNames, int fileAmount, int size)
                 printf("Vowels: <%d>\n", results[i][1]);
                 printf("Words: <%d>\n", results[i][2]);
             }
-
         }
-
     }
 
     for(int i = 1; i < size; i++)

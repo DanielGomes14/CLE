@@ -1,5 +1,14 @@
 #include "worker.h"
 
+/**
+ * @brief Function used to process a chunk.
+ * 
+ * @param chunk pointer to the chunk to be processed
+ * @param chunkLenght size of the chunk
+ * @param vowel pointer to vowels counter
+ * @param consonant pointer to consonants counter
+ * @param words pointer to words counter
+ */
 void chunkProcessing(int* chunk, int chunkLenght, int* vowel, int* consonant, int* words){
 
     int current = 0, lastCharConsonant;
@@ -46,6 +55,18 @@ void chunkProcessing(int* chunk, int chunkLenght, int* vowel, int* consonant, in
     }
 }
 
+/**
+ * @brief Worker logic
+ * 
+ * It waits for a specified "execution code" from the Dispatcher.
+ * According to the respective code, it follows a certain behavior:
+ *  0 - idle
+ *  1 - process chunk
+ *  2 - return results
+ *  3 - end process
+ * 
+ * @param rank rank of the worker process
+ */
 void worker(int rank)
 {
     /*
