@@ -1,0 +1,18 @@
+eliminação gaussiana:
+	transformar a matriz numa matriz triangular de topo ou de base
+		isto vai afetar o cálculo do coeficiente com base no processamento da matriz(linha a linha ou coluna a coluna)
+	calcular diagonal
+
+comparar tempo de processamento do processador com o da gpu
+	linha a linha
+	coluna a coluna
+
+How to maximize parallel operations?
+	what will be the role of each block thread?
+		1 matriz por block threads
+	how many threads should a block thread have?
+		nº rows/columns
+
+need a barrier mechanism to control the threads so they wont go beyond whats intended before all other threads get to a certain point "__syncthreads()"
+
+make row by row and column by column kernel until next week, because we might actually crash the machine and thats BAD
