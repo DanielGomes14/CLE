@@ -22,12 +22,24 @@
 /**
  * @brief Host processing logic, row by row.
  * 
- * @param order order of the matrixes
- * @param amount amount of matrixes
- * @param matrixArray array with matrixes
- * @param results array to store matrixes determinants
+ * @param order order of the matrices
+ * @param amount amount of matrices
+ * @param matrixArray array with matrices
+ * @param results array to store matrices determinants
  */
 void hostRR(int order, int amount, double **matrixArray, double *results);
+
+/**
+ * @brief Device processing logic, row by row.
+ * 
+ * @param d_matrixArray pointer to matrices' array.
+ * @param amount amount of matrices
+ * @param order order of matrices
+ * @param results pointer to store matrices determinants
+ * @return __global__ 
+ */
+__global__ void deviceRR(double **d_matrixArray, int amount, int order, double *results);
+// void deviceRR(int order, int amount, double **matrixArray, double *results);
 
 /**
  * @brief Main logic of the program. 
@@ -57,43 +69,49 @@ int main(int argc, char **argv)
     CHECK(cudaSetDevice(dev));
 
     // process files
-    double *matrixArray = NULL;
+    double *h_matrixArray = NULL;
     int order = 0, amount = 0;
     for(int i = 0; i < fileAmount; i++)
     {
         // read data from file
-        readData(*(fileNames + i), &matrixArray, &order, &amount);
+        readData(*(fileNames + i), &h_matrixArray, &order, &amount);
 
         // structure to save results
         double h_results[amount];
         double d_results[amount];
         double start, hrr, drr;
 
-        // copy data to device memory
         // allocate memory on device
         double *d_matrixArray;
         CHECK(cudaMalloc((void **)&d_matrixArray, (sizeof(double) * order * order * amount)));
 
+        // copy data to device memory
+        CHECK(cudaMemcpy(d_matrixArray, h_matrixArray, (sizeof(double) * order * order * amount), cudaMemcpyHostToDevice));
+        
+        // // create grid and block
+        dim3 grid(order, 1, 1); 
+        dim3 block(amount, 1, 1);
+
+        // // device processing
+        start = seconds();
+        deviceRR<<<grid, block>>>(&d_matrixArray, amount, order, d_results);
+        drr = seconds() - start;
+        printf("Host processing took <%.3f> seconds.\n", drr);
+
+        // wait for kernel to finish
+        CHECK (cudaDeviceSynchronize ());
+        
+        // check for kernel errors
+        CHECK (cudaGetLastError ());
+
+        // free device memory
+        CHECK(cudaFree (d_matrixArray));
 
         // // host processing
         start = seconds();
-        hostRR(order, amount, &matrixArray, h_results);
+        hostRR(order, amount, &h_matrixArray, h_results);
         hrr = seconds() - start;
         printf("Host processing took <%.3f> seconds.\n", hrr);
-
-        
-        // // copy memory to device
-        // CHECK(cudaMemcpy(d_matrixArray, matrixArray, (sizeof(double) * order * order * amount), cudaMemcpyHostToDevice));
-
-        // // create grid and block
-        // dim3 grid(order, 1, 1); 
-        // dim3 block(amount, 1, 1);
-
-        // // device processing
-        // start = seconds();
-        // column_by_column_determinant_gpu<<<grid, block>>>();
-        // drr = seconds() - start;
-
     }
 
     return 0;
@@ -115,14 +133,34 @@ void hostRR(int order, int amount, double **matrixArray, double *results)
     }
 }
 
-/**
- * @brief Calculates determinant column by column
- * 
- * @param matrix pointer to matrix
- * @param order order of matrix
- * @return int determinant of matrix
- */
-void hostCC(int order, int amount, double ***matrixArray, int *results)
-{
 
+__global__ void deviceRR(double **d_matrixArray, int amount, int order, double *results)
+{
+    int matrixIdx = 0;
+    int rowIdx = 0;
+    double det = 0;
+
+    /*
+    rest of logic here
+    */
+
+   *(results + matrixIdx) = det; 
 }
+
+// /**
+//  * @brief Calculates determinant column by column
+//  * 
+//  * @param matrix pointer to matrix
+//  * @param order order of matrix
+//  * @return int determinant of matrix
+//  */
+// void deviceRR(int order, int amount, double **matrixArray, double *results)
+// {
+//     // allocate device memory
+
+//     // copy matrices to device memory
+
+//     // process matrices on device
+
+//     // return results from device
+// }
