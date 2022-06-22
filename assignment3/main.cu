@@ -87,16 +87,16 @@ int main(int argc, char **argv)
 
         // copy data to device memory
         CHECK(cudaMemcpy(d_matrixArray, h_matrixArray, (sizeof(double) * order * order * amount), cudaMemcpyHostToDevice));
-        
+
         // // create grid and block
         dim3 grid(order, 1, 1); 
         dim3 block(amount, 1, 1);
 
         // // device processing
         start = seconds();
-        deviceRR<<<grid, block>>>(&d_matrixArray, amount, order, d_results);
+        // deviceRR<<<grid, block>>>(&d_matrixArray, amount, order, d_results);
         drr = seconds() - start;
-        printf("Host processing took <%.3f> seconds.\n", drr);
+        printf("Device processing took <%.5f> seconds.\n", drr);
 
         // wait for kernel to finish
         CHECK (cudaDeviceSynchronize ());
@@ -111,7 +111,7 @@ int main(int argc, char **argv)
         start = seconds();
         hostRR(order, amount, &h_matrixArray, h_results);
         hrr = seconds() - start;
-        printf("Host processing took <%.3f> seconds.\n", hrr);
+        printf("Host processing took <%.5f> seconds.\n", hrr);
     }
 
     return 0;
@@ -136,14 +136,19 @@ void hostRR(int order, int amount, double **matrixArray, double *results)
 
 __global__ void deviceRR(double **d_matrixArray, int amount, int order, double *results)
 {
-    int matrixIdx = 0;
+    int matrixIdx = blockIdx.x * blockDim.x * blockDim.x;
     int rowIdx = 0;
     double det = 0;
+    double pivotElement = 0.0;
 
     /*
     rest of logic here
     */
 
+   for(int i = 0; i < order; i++)
+   {
+        pivotElement = *(*d_matrixArray + (blockIdx.x * blockDim.x * blockDim.x) + (threadIdx.x * threadIdx.x));
+   }
    *(results + matrixIdx) = det; 
 }
 
