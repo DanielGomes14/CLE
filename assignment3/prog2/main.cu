@@ -21,25 +21,13 @@
 
 /**
  * @brief Host processing logic, row by row.
- * 
- * @param order order of the matrices
- * @param amount amount of matrices
- * @param matrixArray array with matrices
- * @param results array to store matrices determinants
  */
 void hostRR(int order, int amount, double **matrixArray, double *results);
 
 /**
  * @brief Device processing logic, row by row.
- * 
- * @param d_matrixArray pointer to matrices' array.
- * @param amount amount of matrices
- * @param order order of matrices
- * @param results pointer to store matrices determinants
- * @return __global__ 
  */
 __global__ void deviceRR(double *d_matrixArray, double *d_results);
-// void deviceRR(int order, int amount, double **matrixArray, double *results);
 
 /**
  * @brief Main logic of the program. 
@@ -76,12 +64,6 @@ int main(int argc, char **argv)
         // read data from file
         readData(*(fileNames + i), &h_matrixArray, &order, &amount);
 
-        // for(int j = 0; j < amount; j++)
-        // {
-        //     printf("%f\t", *(h_matrixArray + j));
-        //     break;
-        // }
-
         // structure to save results
         double *retrieved_results = (double *)malloc(sizeof(double) * amount);
 
@@ -103,7 +85,6 @@ int main(int argc, char **argv)
         deviceRR<<<grid, block>>>(d_matrixArray, d_results);
         CHECK (cudaDeviceSynchronize ());
         double drr = seconds() - d_start;
-        printf("Device processing took <%.5f> seconds.\n", drr);
 
         CHECK(cudaGetLastError ());         // check kernel errors
         CHECK(cudaMemcpy(retrieved_results, d_results, sizeof(double) * amount, cudaMemcpyDeviceToHost));   // return obtained results
@@ -114,13 +95,16 @@ int main(int argc, char **argv)
         double start = seconds();
         hostRR(order, amount, &h_matrixArray, h_results);
         double hrr = seconds() - start;
-        printf("Host processing took <%.5f> seconds.\n", hrr);
 
         printf("\nRESULTS\n");
         for(int i = 0; i < amount; i++)
         {
-            printf("HOST: <%+5.3e>\t DEVICE: <%+5.3e>\n", h_results[i], retrieved_results[i]);
+            printf("MATRIX: <%d>\tHOST: <%+5.3e>\t DEVICE: <%+5.3e>\n", i + 1, h_results[i], retrieved_results[i]);
         }
+
+        printf("\nEXECUTION TIMES\n");
+        printf("Host processing took <%.5f> seconds.\n", hrr);
+        printf("Device processing took <%.5f> seconds.\n", drr);
     }
 
     return 0;
@@ -131,7 +115,6 @@ int main(int argc, char **argv)
  * 
  * @param matrix pointer to matrix
  * @param order order of matrix
- * @return int determinant of matrix
  */
 void hostRR(int order, int amount, double **matrixArray, double *results)
 {
@@ -143,11 +126,10 @@ void hostRR(int order, int amount, double **matrixArray, double *results)
 }
 
 /**
- * @brief 
+ * @brief Device kernel to calculate gaussian elimination, row by row
  * 
- * @param d_matrixArray 
- * @param d_results 
- * @return __global__ 
+ * @param d_matrixArray pointer to array of matrices
+ * @param d_results pointer to array of results 
  */
 __global__ void deviceRR(double *d_matrixArray, double *d_results)
 {
@@ -166,18 +148,18 @@ __global__ void deviceRR(double *d_matrixArray, double *d_results)
         {
             if(iter == 0)
             {
-                d_results[blockIdx.x] = 1;
+                *(d_results + blockIdx.x) = 1;
             }
-            d_results[blockIdx.x] *= d_matrixArray[iterRow + iter];
+            *(d_results + blockIdx.x) *= *(d_matrixArray + iterRow + iter);
             continue;
         }
 
-        double pivot = d_matrixArray[iterRow + iter];
+        double pivot = *(d_matrixArray + iterRow + iter);
 
-        double value = d_matrixArray[row + iter] / pivot;
+        double value = *(d_matrixArray + row + iter) / pivot;
         for(int i = iter + 1; i < n; i++)
         {
-            d_matrixArray[row + i] -= d_matrixArray[iterRow + i] * value;
+            *(d_matrixArray + row + i) -= *(d_matrixArray + iterRow + i) * value;
         }
         __syncthreads();
     }
