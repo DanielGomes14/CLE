@@ -8,9 +8,9 @@
  * @param order order of the matrixes
  * @param amount total amount of matrixes
  */
-void readData(char *fileName, double ***matrixArray, int *order, int *amount)
+void readData(char *fileName, double **matrixArray, int *order, int *amount)
 {
-    FILE *f = fopen(fileName, "rb");
+    FILE *f = fopen(strcat(strdup("./files/"), fileName), "rb");
     if(!f)
     {
         perror("error opening file");
@@ -23,52 +23,37 @@ void readData(char *fileName, double ***matrixArray, int *order, int *amount)
         exit(EXIT_FAILURE);
     }
 
-    (*matrixArray) = (double**)malloc(sizeof(double*) * (*amount));
+    if(!fread(order, sizeof(int), 1, f))
+    {
+        perror("error reading order of matrixes");
+        exit(EXIT_FAILURE);
+    }
+
+    (*matrixArray) = (double*)malloc(sizeof(double) * (*amount) * (*order) * (*order));
     if(!(*matrixArray))
     {
         perror("error allocating memory for matrixes");
         exit(EXIT_FAILURE);
     }
 
-    if(!fread(order, sizeof(int), 1, f))
+    if(!fread((*matrixArray), sizeof(double), (*amount) * (*order) * (*order), f))
     {
-        perror("error reading order of amtrixes");
+        perror("error reading all the matrixes");
         exit(EXIT_FAILURE);
-    }
-    
-    (*matrixArray) = (double**)malloc(sizeof(double*) * (*amount));
-
-    for(int i = 0; i < (*order); i++)
-    {
-        double *tempMatrix = NULL;
-        tempMatrix = (double*)malloc(sizeof(double) * (*order) * (*order));
-
-        if(!fread(tempMatrix, sizeof(double) * (*order) * (*order), 1, f))
-        {
-            // free memory fo what was already stored
-            for(int j = 0; j < (i - 1); j--)
-                free((*matrixArray)[j]);
-            free((*matrixArray));
-            perror("error reading matrix from file");
-            exit(EXIT_FAILURE);
-        }
-
-        (*matrixArray)[i] = tempMatrix;
     }
 }
 
 /**
  * @brief Determinant calculation of the matrix
  * 
- * This determination transforms the matrix to a base triangular matrix, row by row. 
+ * This determination transforms the matrix to a base triangular matrix, column by column. 
  * 
  * @param order order of the matrix
  * @param matrix pointer to the matrix to be processed of size "order" * "order"
  * @return double (calculated determinant)
  */
-double row_by_row_determinant(int order,  double *matrix)
+double column_by_column_determinant(int order,  double *matrix)
 {
-
     double det = 1;
     double pivotElement;
     int pivotCol;
@@ -126,15 +111,14 @@ double row_by_row_determinant(int order,  double *matrix)
 /**
  * @brief Calculates the determinant of a square matrix using Gaussian Elimination
  * 
- * This determination transforms the matrix to a base triangular matrix, column by column. 
+ * This determination transforms the matrix to a base triangular matrix, row by row. 
  * 
  * @param order the order of a determinant
  * @param matrix the matrix of 1 Dimension with the length of "order" * "order"
- * @return double the determinant value
+ * @return double value of the determinant
  */
-double column_by_column_determinant(int order,  double *matrix)
+double row_by_row_determinant(int order,  double *matrix)
 {
-
     double det = 1;
     double pivotElement;
     int pivotRow;
@@ -188,4 +172,26 @@ double column_by_column_determinant(int order,  double *matrix)
     }
 
     return det;
+}
+
+__global__ void column_by_column_determinant_gpu(double *d_matrixArray, int order, int *results)
+{
+    unsigned int matrixIdx = blockIdx.x + gridDim.x * blockIdx.y + gridDim.x * gridDim.y * blockIdx.z;
+    unsigned int columnIdx = threadIdx.x + blockDim.x *threadIdx.y + blockDim.x * blockDim.y * threadIdx.z;;
+
+    // unsigned int matIdx = gridDim.x * blockIdx.x
+
+    double pivotElement = *((d_matrixArray + matrixIdx) + (columnIdx * columnIdx));
+
+    // put values under pivot element to zero
+    for(int i = 0; i < order; i++)
+    {
+        if(i >= columnIdx)
+        {
+            *((d_matrixArray + matrixIdx) + (i * order) + i) = 0;
+        }
+    }
+
+
+
 }

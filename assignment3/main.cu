@@ -20,6 +20,16 @@
 #endif
 
 /**
+ * @brief Host processing logic, row by row.
+ * 
+ * @param order order of the matrixes
+ * @param amount amount of matrixes
+ * @param matrixArray array with matrixes
+ * @param results array to store matrixes determinants
+ */
+void hostRR(int order, int amount, double **matrixArray, double *results);
+
+/**
  * @brief Main logic of the program. 
  * Makes gaussian elimination on the host and the device.
  * Compares thre obtained results at the end. 
@@ -46,8 +56,8 @@ int main(int argc, char **argv)
     printf("Using Device %d: %s\n", dev, deviceProp.name);
     CHECK(cudaSetDevice(dev));
 
-    // process filesS
-    double **matrixArray;
+    // process files
+    double *matrixArray = NULL;
     int order = 0, amount = 0;
     for(int i = 0; i < fileAmount; i++)
     {
@@ -55,34 +65,34 @@ int main(int argc, char **argv)
         readData(*(fileNames + i), &matrixArray, &order, &amount);
 
         // structure to save results
-        int hostRRResults[amount], hostCCResults[amount];
-        int deviceRRResults[amount], deviceCCResults[amount];
-        double start, hrr, hcc, drr, dcc;
+        double h_results[amount];
+        double d_results[amount];
+        double start, hrr, drr;
 
-        // host processing
-        start = seconds();
-        hostRR(order, amount, &matrixArray, hostRRResults);
-        hrr = seconds() - start;
-
-        start = seconds();
-        hostCC(order, amount, &matrixArray, hostCCResults);
-        hcc = seconds() - start;
-
-
-        // device processing
-        for(int j = 0; j < amount; j++)
-        {
-            double *ptr;
-            CHECK(cudaMalloc((void **)&ptr, (sizeof(double) * order * order)));
-            CHECK(cudaMemcpy(ptr, (*(matrixArray + j)), (sizeof(double) * order * order), cudaMemcpyHostToDevice));
-        }
+        // copy data to device memory
         // allocate memory on device
-        
-        // copy memory to device
-        // find right dimensions to grid and block
-        // create grid and block
-        // save results
+        double *d_matrixArray;
+        CHECK(cudaMalloc((void **)&d_matrixArray, (sizeof(double) * order * order * amount)));
 
+
+        // // host processing
+        start = seconds();
+        hostRR(order, amount, &matrixArray, h_results);
+        hrr = seconds() - start;
+        printf("Host processing took <%.3f> seconds.\n", hrr);
+
+        
+        // // copy memory to device
+        // CHECK(cudaMemcpy(d_matrixArray, matrixArray, (sizeof(double) * order * order * amount), cudaMemcpyHostToDevice));
+
+        // // create grid and block
+        // dim3 grid(order, 1, 1); 
+        // dim3 block(amount, 1, 1);
+
+        // // device processing
+        // start = seconds();
+        // column_by_column_determinant_gpu<<<grid, block>>>();
+        // drr = seconds() - start;
 
     }
 
@@ -96,9 +106,13 @@ int main(int argc, char **argv)
  * @param order order of matrix
  * @return int determinant of matrix
  */
-void hostRR(int order, int amount, double ***matrixArray, int *results)
+void hostRR(int order, int amount, double **matrixArray, double *results)
 {
-
+    for(int i = 0; i < amount; i++)
+    {
+        *(results + i) = row_by_row_determinant(order, ((*matrixArray) + (i * order * order)));
+        // printf("%+5.3e\n", *(results + i));
+    }
 }
 
 /**
