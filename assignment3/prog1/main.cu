@@ -38,8 +38,8 @@ void hostCC(int order, int amount, double **matrixArray, double *results);
  * @param results pointer to store matrices determinants
  * @return __global__ 
  */
-__global__ void deviceCC(double *d_matrixArray, double *d_results,int currElem);
-// void deviceRR(int order, int amount, double **matrixArray, double *results);
+__global__ void deviceCC(double *d_matrixArray, double *d_results);
+// void deviceCC(int order, int amount, double **matrixArray, double *results);
 
 /**
  * @brief Main logic of the program. 
@@ -76,11 +76,6 @@ int main(int argc, char **argv)
         // read data from file
         readData(*(fileNames + i), &h_matrixArray, &order, &amount);
 
-        // for(int j = 0; j < amount; j++)
-        // {
-        //     printf("%f\t", *(h_matrixArray + j));
-        //     break;
-        // }
 
         // structure to save results
         double *retrieved_results = (double *)malloc(sizeof(double) * amount);
@@ -100,10 +95,10 @@ int main(int argc, char **argv)
 
         // DEVICE PROCESSING
         double d_start = seconds();
-        for(int i = 0; i < order; i++){
-                    deviceCC<<<grid, block>>>(d_matrixArray, d_results,i);
-        }
-       CHECK (cudaDeviceSynchronize ());
+        
+        deviceCC<<<grid, block>>>(d_matrixArray, d_results);
+        
+        CHECK (cudaDeviceSynchronize ());
         double drr = seconds() - d_start;
         printf("Device processing took <%.5f> seconds.\n", drr);
 
@@ -151,29 +146,32 @@ void hostCC(int order, int amount, double **matrixArray, double *results)
  * @param d_results 
  * @return __global__ 
  */
-__global__ void deviceCC(double *d_matrixArray, double* d_results, int currElem)
+__global__ void deviceCC(double *d_matrixArray, double* d_results)
 {
-    if(threadIdx.x < currElem) return;
-    int order = blockDim.x;
-    int matrixIdx = blockIdx.x * order * order;
-    int tColumn = threadIdx.x + matrixIdx;
-    int iterColumn =  currElem + matrixIdx;
-    double pivot = d_matrixArray[iterColumn + currElem * order]; 
-   
-    if(threadIdx.x == currElem){
-	
-        if(currElem == 0) d_results[blockIdx.x] = 1;
-        d_results[blockIdx.x]*=pivot;
-	return;
-    }
-    double const_val = d_matrixArray[tColumn + order * currElem ] / pivot;
-    for(int col = currElem +1; col< order; col++ ){
-	
-        d_matrixArray[tColumn+ order * col] -= d_matrixArray[iterColumn+order*col]
-         * const_val;
-    	
-    }
+    for(int currElem = 0; currElem < order; currElem++ ){
+        if(threadIdx.x < currElem) return;
+        int order = blockDim.x;
+        int matrixIdx = blockIdx.x * order * order;
+        int tColumn = threadIdx.x + matrixIdx;
+        int iterColumn =  currElem + matrixIdx;
+        double pivot = d_matrixArray[iterColumn + currElem * order]; 
+    
+        if(threadIdx.x == currElem){
+        
+            if(currElem == 0) d_results[blockIdx.x] = 1;
+            d_results[blockIdx.x]*=pivot;
+        return;
+        }
+        double const_val = d_matrixArray[tColumn + order * currElem ] / pivot;
+        for(int row = currElem +1; row< order; row++ ){
+        
+            d_matrixArray[tColumn+ order * row] -= d_matrixArray[iterColumn+order*row]
+            * const_val;
+            
+        }
     __syncthreads();  
+    }
+    
 
     
 }
