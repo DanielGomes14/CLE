@@ -109,7 +109,6 @@ int processInput (int argc, char *argv[], int* fileAmount, char*** fileNames)
     *fileNames = auxFileNames;
 
     return EXIT_SUCCESS;
-
 }
 
 /**

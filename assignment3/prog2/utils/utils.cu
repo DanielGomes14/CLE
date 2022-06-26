@@ -63,7 +63,7 @@ double column_by_column_determinant(int order,  double *matrix)
         pivotElement = matrix[ (i * order) + i]; // current diagonal element
         pivotCol = i;
         // partial pivoting, which should select
-        // the entry with largest absolute value from the column of the matrix
+        // the entry with largest absolute value from the row of the matrix
         // that is currently being considered as the pivot element
         for (int col = i + 1; col < order; ++col)
         {
@@ -79,7 +79,7 @@ double column_by_column_determinant(int order,  double *matrix)
         if (pivotElement == 0.0)
             return 0.0;
 
-        if (pivotCol != i) // if the pivotELement is not in the current col, then we perform a swap in the rows
+        if (pivotCol != i) // if the pivotELement is not in the current column, then we perform a swap in the columns
         {
             for (int k = 0; k < order; k++)
             {
@@ -145,7 +145,7 @@ double row_by_row_determinant(int order,  double *matrix)
             return 0.0;
         }
 
-        if (pivotRow != i) // if the pivotELement is not in the current row, then we perform a swap in the columns
+        if (pivotRow != i) // if the pivotELement is not in the current row, then we perform a swap in the rows 
         {
             for (int k = 0; k < order; k++)
             {
@@ -173,3 +173,4 @@ double row_by_row_determinant(int order,  double *matrix)
 
     return det;
 }
+
