@@ -9,18 +9,9 @@
 #include "cmd/processCommandLine.cuh"
 #include "utils/utils.cuh"
 
-/**
- *   program configuration
- */
-#ifndef SECTOR_SIZE
-#define SECTOR_SIZE 512
-#endif
-#ifndef N_SECTORS
-#define N_SECTORS (1 << 21) // it can go as high as (1 << 21)
-#endif
 
 /**
- * @brief Host processing logic, row by row.
+ * @brief Host processing logic, column by column.
  *
  * @param order order of the matrices
  * @param amount amount of matrices
@@ -30,7 +21,7 @@
 void hostCC(int order, int amount, double **matrixArray, double *results);
 
 /**
- * @brief Device processing logic, col by col.
+ * @brief Device processing logic, column by column.
  *
  * @param d_matrixArray pointer to matrices' array.
  * @param amount amount of matrices
@@ -44,7 +35,7 @@ __global__ void deviceCC(double *d_matrixArray, double *d_results);
 /**
  * @brief Main logic of the program.
  * Makes gaussian elimination on the host and the device.
- * Compares thre obtained results at the end.
+ * Compares the obtained results at the end.
  *
  * @param argc amount of arguments in the command line
  * @param argv array with the arguments from the command line
@@ -123,7 +114,7 @@ int main(int argc, char **argv)
 }
 
 /**
- * @brief Calculates determinant column by column
+ * @brief Calculates determinant column by column on the host
  *
  * @param matrix pointer to matrix
  * @param order order of matrix
@@ -139,34 +130,39 @@ void hostCC(int order, int amount, double **matrixArray, double *results)
 }
 
 /**
- * @brief
+ * @brief Calculates the determinant column by column on the GPU
  *
- * @param d_matrixArray
- * @param d_results
+ * @param d_matrixArray the array with all matrices
+ * @param d_results the array to store the results
  * @return __global__
  */
 __global__ void deviceCC(double *d_matrixArray, double *d_results)
 {
-    int order = blockDim.x;
-    int matrixIdx = blockIdx.x * order * order;
-    int tColumn = threadIdx.x + matrixIdx;
-    int pivotColumn;
+    
+    int order = blockDim.x; /** The order of the Matrix is the size of the block since a block is a matrix **/ 
+    int matrixIdx = blockIdx.x * order * order; /** jump to the current matrix**/
+    int tColumn = threadIdx.x + matrixIdx; /** The column for which each thread is responsible**/
+    int pivotColumn; /**  Auxiliar variable to select the index column of the pivot **/
+   
     for (int currElem = 0; currElem < order; currElem++)
     {
 
         if (threadIdx.x < currElem)
             return;
 
-        int iterColumn = currElem + matrixIdx;
-        double pivot = d_matrixArray[iterColumn + currElem * order];
-        pivotColumn = iterColumn;
+        int iterColumn = currElem + matrixIdx; /** jump to the column of the matrix of the current iteration **/
 
+        double pivot = d_matrixArray[iterColumn + currElem * order];  /** The Pivot will be initially the diagonal element on the iterColumn**/
+        pivotColumn = iterColumn; 
+
+        // Only one thread should do the Partial Pivoting, and update the determinant value of the Matrix
         if (threadIdx.x == currElem)
         {
-            
+            // iterate through the remaining columns of the same row
             for (int col = iterColumn + 1; col < ( matrixIdx + order); ++col)
-            {
+            {   
 
+                // if there's a bigger value on the row than the current pivot, the choosen pivot will be updated
                 if (fabs(d_matrixArray[(currElem * order) + col]) > fabs(pivot))
                 {
 
@@ -178,9 +174,10 @@ __global__ void deviceCC(double *d_matrixArray, double *d_results)
             }
             
             if (currElem == 0)
+                // initialize the results index of the matrix on the first iteration 
                 d_results[blockIdx.x] = 1;
 
-            
+            // if the elected pivot is different from the initial one, than we perform a swap on the columns
             if (pivotColumn != iterColumn)
             {
                
@@ -193,16 +190,18 @@ __global__ void deviceCC(double *d_matrixArray, double *d_results)
                 }
                 d_results[blockIdx.x] *= -1.0; // signal the row swapping
             }
+
             d_results[blockIdx.x] *= pivot;
             return;
             //continue;
         }
+        // syncronize all threads in the current block https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html
         __syncthreads();
         iterColumn = currElem + matrixIdx;
         pivot = d_matrixArray[iterColumn + currElem * order];
         pivotColumn = iterColumn;
 
-
+        // perform the reduction of the base matrix
         double const_val = d_matrixArray[tColumn + order * currElem] / pivot;
         for (int row = currElem + 1; row < order; row++)
         {
